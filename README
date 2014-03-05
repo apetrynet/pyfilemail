@@ -1,0 +1,22 @@
+pyfilemail
+By: Daniel Flehner Heen
+
+Pyhton wrapper for www.filemail.com API
+using requests by Kenneth Reitz.
+
+import filemail
+
+fm = filemail.login(user='ola@gmail.com', passwd='secret', api_key='sjlkjs1o10iojsq')
+
+fm.upload(document='/path/to/my/file',
+          mesage={})
+fm.upload(documents=['/path/one/file1', '/path/two/file2'],
+          message={})
+
+fm.list()
+files = fm.list()
+
+fm.download(document='/path/to/my/file')
+fm.download(documents=['/path/one/file1', '/path/two/file2'])
+
+fm.download(documents=files)
