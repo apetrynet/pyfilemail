@@ -39,7 +39,7 @@ class FMBaseError(Exception):
         5003: 'SignupFormNotAccepted',
         5004: 'SessionPasswordNotFound',
         5005: 'SessionCustRefNotFound',
-        5006: 'AllUserLicencesesInUse',
+        5006: 'AllUserLicencesesInUse'
         }
 
     def __init__(self, error_code, message=''):
