@@ -3,12 +3,13 @@ import os
 import requests
 from hashlib import md5
 from uuid import uuid4
+from mimetypes import guess_type
 
 from config import Config
 from errors import *
 
 
-class Filemail():
+class Filemail(object):
 
     def __init__(self):
         self._logged_in = False
@@ -38,7 +39,6 @@ class Filemail():
             'cancel': 'api/transfer/cancel',
             'delete': 'api/transfer/delete',
             'zip': 'api/transfer/zip',
-            #addfile ignored for now
             'file_rename': 'api/transfer/file/rename',
             'file_delete': 'api/transfer/file/delete',
             'update': 'api/transfer/update',
@@ -134,11 +134,6 @@ class Transfer():
 
         file_specs = self._getFileSpecs(file_path)
 
-        content = {
-            'name': file_specs['filename'],
-            'filename': file_specs['filename']
-            }
-
         payload = {
             'transferid': self.transferid,
             'transferkey': self.transferkey,
@@ -147,12 +142,37 @@ class Transfer():
             'chunkpos': 0,
             'totalsize': file_specs['filesize'],
             'md5': file_specs['md5'],
-            'compressed': file_specs['compressed']
+            'compressed': file_specs['compressed'],
+            'name': file_specs['filename'],
+            'filename': file_specs['filename'],
+            'content-type': file_specs['content-type']
             }
-        print payload
-        with open(file_path, 'rb') as fp:
-            res = requests.post(url=url, params=payload, data=fp)
-        print res.raise_for_status()
+
+        res = requests.post(url=url,
+                            files={'file': open(file_path, 'rb')},
+                            data=payload,
+                            hooks=dict(response=self.print_url),
+                            stream=True)
+        print res
+
+    def print_url(self, r, *args, **kwargs):
+        print r.iter_lines()
+
+    def complete(self, keep_transfer_key=False):
+        url = self._auth.getURL('complete')
+
+        payload = {
+            'apikey': self._auth.apikey,
+            'transferid': self.transferid,
+            'transferkey': self.transferkey,
+            'keep_transfer_key': keep_transfer_key
+            }
+
+        res = requests.post(url=url, params=payload)
+
+        if not res.ok:
+            print res.json()['errormessage']
+        print res.json()
 
     def get(self):
         url = self._auth.getURL('get')
@@ -165,23 +185,25 @@ class Transfer():
 
         res = requests.post(url=url, params=payload)
 
-        if not res:
+        if not res.ok:
             print res.json()['errormessage']
+        print res.json()
 
     def update():
         pass
 
     def _getFileSpecs(self, file_path):
         fileid = uuid4()
-        md5hash = md5(open(file_path, 'rb').read()).digest().encode('base64')
+        md5hash = md5(open(file_path, 'rb').read()).digest()
         compressed = file_path[-3:] in ['zip', 'rar', 'tar', '.gz']
 
         results = {
-            'fileid': str(fileid),
+            'fileid': str(fileid).replace('-', ''),
             'filename': os.path.basename(file_path),
             'filesize': os.path.getsize(file_path),
-            'md5': md5hash,
-            'compressed': compressed
+            'md5': md5hash.encode('base64')[:-1],
+            'compressed': compressed,
+            'content-type': guess_type(file_path)[0]
             }
 
         return results
