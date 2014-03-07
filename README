@@ -18,5 +18,6 @@ transfer = Transfer(login,
                     password='')
 
 transfer.addfile('/path/to/myfile.pdf')
+transfer.complete()
 transfer.get()
 fm.logout()
