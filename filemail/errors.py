@@ -70,3 +70,7 @@ class FMTransferFileGetError(FMBaseError):
 
 class FMSubscriptionError(FMBaseError):
     pass
+
+
+class FMConfigError(FMBaseError):
+    pass
