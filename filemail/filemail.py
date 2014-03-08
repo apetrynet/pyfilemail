@@ -4,6 +4,8 @@ import requests
 from hashlib import md5
 from uuid import uuid4
 from mimetypes import guess_type
+from datetime import datetime, timedelta
+from calendar import timegm
 
 from config import Config
 from errors import *
@@ -25,6 +27,44 @@ class Filemail(object):
     def logout(self):
         user = self.fm_user['username']
         self._connection('logout', user)
+
+    def getSent(self, get_all=True):
+        url = self.getURL('sent_get')
+
+        payload = {
+            'apikey': self.apikey,
+            'logintoken': self.logintoken,
+            'getall': get_all
+            }
+
+        res = requests.post(url=url, params=payload)
+
+        if not res.ok:
+            print res.json()['errormessage']
+        print res.json()
+
+    def getReceived(self, age=None, for_all=True):
+        url = self.getURL('received_get')
+
+        if age:
+            if not isinstance(age, int) or age < 0 or age > 90:
+                raise FMBaseError('Age must be integer between 0-90')
+
+            past = datetime.utcnow() - timedelta(days=age)
+            age = timegm(past.utctimetuple())
+
+        payload = {
+            'apikey': self.apikey,
+            'logintoken': self.logintoken,
+            'getForAllUsers': for_all,
+            'from': age
+            }
+
+        res = requests.post(url=url, params=payload)
+
+        if not res.ok:
+            print res.json()['errormessage']
+        print res.json()
 
     def getURL(self, action):
         urls = {
@@ -65,10 +105,8 @@ class Filemail(object):
             url=url,
             params=payload
             )
-        #res_json = res.json()
 
-        #if res_json['responsestatus'] != 'OK':
-        if not res:
+        if not res.ok:
             self._raiseError(res)
 
         if action == 'login':
@@ -174,6 +212,85 @@ class Transfer():
             print res.json()['errormessage']
         print res.json()
 
+    def delete(self):
+        url = self._auth.getURL('delete')
+
+        payload = {
+            'apikey': self._auth.apikey,
+            'transferid': self.transferid,
+            'logintoken': self._auth.logintoken
+            }
+
+        res = requests.post(url=url, params=payload)
+
+        if not res.ok:
+            print res.json()['errormessage']
+        print res.json()
+
+    def zip(self):
+        url = self._auth.getURL('zip')
+
+        payload = {
+            'apikey': self._auth.apikey,
+            'transferid': self.transferid,
+            'transferkey': self.transferkey
+            }
+
+        res = requests.post(url=url, params=payload)
+
+        if not res.ok:
+            print res.json()['errormessage']
+        print res.json()
+
+    def cancel(self):
+        url = self._auth.getURL('cancel')
+
+        payload = {
+            'apikey': self._auth.apikey,
+            'transferid': self.transferid,
+            'transferkey': self.transferkey
+            }
+
+        res = requests.post(url=url, params=payload)
+
+        if not res.ok:
+            print res.json()['errormessage']
+        print res.json()
+
+    def share(self, to=[], message=u''):
+        url = self._auth.getURL('share')
+
+        payload = {
+            'apikey': self._auth.apikey,
+            'logintoken': self._auth.logintoken,
+            'transferid': self.transferid,
+            'to': ','.join(to),
+            'from': self._auth.username,
+            'message': message
+            }
+
+        res = requests.post(url=url, params=payload)
+
+        if not res.ok:
+            print res.json()['errormessage']
+        print res.json()
+
+    def forward(self, to=[]):
+        url = self._auth.getURL('forward')
+
+        payload = {
+            'apikey': self._auth.apikey,
+            'transferid': self.transferid,
+            'transferkey': self.transferkey,
+            'to': ','.join(to)
+            }
+
+        res = requests.post(url=url, params=payload)
+
+        if not res.ok:
+            print res.json()['errormessage']
+        print res.json()
+
     def get(self):
         url = self._auth.getURL('get')
 
@@ -189,8 +306,24 @@ class Transfer():
             print res.json()['errormessage']
         print res.json()
 
-    def update():
-        pass
+    def update(self, **kwargs):
+        url = self._auth.getURL('update')
+
+        payload = {
+            'apikey': self._auth.apikey,
+            'logintoken': self._auth.logintoken,
+            'transferid': self.transferid,
+            'message': kwargs.get('message'),
+            'days': kwargs['days'],
+            'downloads': kwargs['downloads'],
+            'notify': kwargs['notify']
+            }
+
+        res = requests.post(url=url, params=payload)
+
+        if not res.ok:
+            print res.json()['errormessage']
+        print res.json()
 
     def _getFileSpecs(self, file_path):
         fileid = uuid4()
