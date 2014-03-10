@@ -335,6 +335,12 @@ class Transfer():
         return res.json()
 
 
+class Files():
+
+    def __init__(self, transfer):
+        pass
+
+
 class Contacts():
 
     def __init__(self):
