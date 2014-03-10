@@ -11,29 +11,49 @@ from config import Config
 from errors import *
 
 
-class Filemail(object):
+class User():
 
-    def __init__(self):
+    def __init__(self, user, api_key, password, **kwargs):
         self._logged_in = False
 
-        self.fm_config = Config()
-        self.fm_user = None
-        self.fm_address = self.fm_config['Address']
+        self._config = Config(user)
+        self.username = self._config.username
+        self._config['api_key'] = self._config.apikey or api_key
+        self._config['password'] = self._config.password or password
 
-    def login(self, user):
-        self._connection('login', user)
-        return self
+        self._login()
 
-    def logout(self):
-        user = self.fm_user['username']
-        self._connection('logout', user)
-
-    def getSent(self, get_all=True):
-        url = self.getURL('sent_get')
+    def getInfo(self):
+        url = self._config.getURL('user_get')
 
         payload = {
-            'apikey': self.apikey,
-            'logintoken': self.logintoken,
+            'apikey': self._config.apikey,
+            'logintoken': self._config.logintoken
+            }
+
+        res = requests.post(url=url, params=payload)
+
+        if not res.ok:
+            print res.json()['errormessage']
+        return res.json()
+
+    def updateInfo(self, **kwargs):
+        self._config.update(kwargs)
+
+        url = self._config.getURL('user_update')
+
+        res = requests.post(url=url, params=self._config)
+
+        if not res.ok:
+            print res.json()['errormessage']
+        return res.json()
+
+    def getSent(self, get_all=True):
+        url = self._config.getURL('sent_get')
+
+        payload = {
+            'apikey': self._config.apikey,
+            'logintoken': self._config.logintoken,
             'getall': get_all
             }
 
@@ -41,10 +61,10 @@ class Filemail(object):
 
         if not res.ok:
             print res.json()['errormessage']
-        print res.json()
+        return res.json()
 
     def getReceived(self, age=None, for_all=True):
-        url = self.getURL('received_get')
+        url = self._config.getURL('received_get')
 
         if age:
             if not isinstance(age, int) or age < 0 or age > 90:
@@ -54,8 +74,8 @@ class Filemail(object):
             age = timegm(past.utctimetuple())
 
         payload = {
-            'apikey': self.apikey,
-            'logintoken': self.logintoken,
+            'apikey': self._config.apikey,
+            'logintoken': self._config.logintoken,
             'getForAllUsers': for_all,
             'from': age
             }
@@ -64,97 +84,55 @@ class Filemail(object):
 
         if not res.ok:
             print res.json()['errormessage']
-        print res.json()
+        return res.json()
 
-    def getURL(self, action):
-        urls = {
-            'login': 'api/authentication/login',
-            'logout': 'api/authentication/logout',
+    def getConfig(self):
+        return self._config
 
-            'init': 'api/transfer/initialize',
-            'get': 'api/transfer/get',
-            'complete': 'api/transfer/complete',
-            'forward': 'api/transfer/forward',
-            'share': 'api/transfer/share',
-            'cancel': 'api/transfer/cancel',
-            'delete': 'api/transfer/delete',
-            'zip': 'api/transfer/zip',
-            'file_rename': 'api/transfer/file/rename',
-            'file_delete': 'api/transfer/file/delete',
-            'update': 'api/transfer/update',
-            'sent_get': 'api/transfer/sent/get',
-            'received_get': 'api/transfer/received/get'
-            }
+    def save(self, config_path=None):
+        self._config.save(config_path)
 
-        if action in urls:
-            login_url = os.path.join(
-                self.fm_address['base_url'],
-                urls[action]
-            )
-            return login_url
-        raise FMBaseError('You passed an invalid action: {}'.format(action))
+    def _login(self):
+        self._connection('login')
 
-    def _connection(self, action, user):
+    def logout(self):
+        self._connection('logout')
+        return
+
+    def _connection(self, action):
         if action not in ['login', 'logout']:
             raise FMBaseError('{}, is not a vaid action'.format(action))
 
-        url = self.getURL(action)
-        payload = self._getAuthentication(action, user)
-
-        res = requests.post(
-            url=url,
-            params=payload
-            )
-
-        if not res.ok:
-            self._raiseError(res)
-
-        if action == 'login':
-            login_token = res.json()['logintoken']
-            self.fm_user['logintoken'] = login_token
-
-        self._logged_in = not self._logged_in
-
-    def _getAuthentication(self, action, user):
-        if action not in ['login', 'logout']:
-            raise FMBaseError('{}, is not a vaid action'.format(action))
-
-        self.fm_user = self.fm_config[user]
-        if not self.fm_user:
-            raise FMBaseError('Unknown User: {}'.format(user))
-
+        url = self._config.getURL(action)
         auth_keys = {
             'login': ['apikey', 'username', 'password', 'source', 'logintoken'],
             'logout': ['apikey', 'logintoken']
             }
 
-        payload = dict(map(lambda k: (k, self.fm_user[k]), auth_keys[action]))
+        payload = map(lambda k: (k, self._config[k]), auth_keys[action])
 
-        return payload
+        res = requests.post(
+            url=url,
+            params=dict(payload)
+            )
 
-    def _raiseError(self, response):
-        status_code = response.status_code
-        if status_code <= 1999:
-            raise FMGenericError(status_code)
+        if not res.ok:
+            print res.json()['errormessage']
 
-    def __getattr__(self, attr):
-        if attr in self.fm_user:
-            return self.fm_user[attr]
-        raise AttributeError('No attribute named: {}'.format(attr))
+        if action == 'login':
+            login_token = res.json()['logintoken']
+            self._config['logintoken'] = login_token
 
-
-class Authentication():
-
-    def __init__(self, config):
-        super(Authentication, self).__init__()
+        self._logged_in = not self._logged_in
 
 
 class Transfer():
 
-    def __init__(self, login, **kwargs):
-        self._auth = login
+    def __init__(self, user, **kwargs):
+        self._user = user
+        self._config = self._user.getConfig()
         self._transfer_info = kwargs
-        self._transfer_info.update({'from': self._auth.username})
+        self._transfer_info.update({'from': self._user.username})
 
         response = self._initialize()
 
@@ -197,10 +175,10 @@ class Transfer():
         print r.iter_lines()
 
     def complete(self, keep_transfer_key=False):
-        url = self._auth.getURL('complete')
+        url = self._config.getURL('complete')
 
         payload = {
-            'apikey': self._auth.apikey,
+            'apikey': self._config.apikey,
             'transferid': self.transferid,
             'transferkey': self.transferkey,
             'keep_transfer_key': keep_transfer_key
@@ -213,12 +191,12 @@ class Transfer():
         print res.json()
 
     def delete(self):
-        url = self._auth.getURL('delete')
+        url = self._config.getURL('delete')
 
         payload = {
-            'apikey': self._auth.apikey,
+            'apikey': self._config.apikey,
             'transferid': self.transferid,
-            'logintoken': self._auth.logintoken
+            'logintoken': self._config.logintoken
             }
 
         res = requests.post(url=url, params=payload)
@@ -228,10 +206,10 @@ class Transfer():
         print res.json()
 
     def zip(self):
-        url = self._auth.getURL('zip')
+        url = self._config.getURL('zip')
 
         payload = {
-            'apikey': self._auth.apikey,
+            'apikey': self._config.apikey,
             'transferid': self.transferid,
             'transferkey': self.transferkey
             }
@@ -243,10 +221,10 @@ class Transfer():
         print res.json()
 
     def cancel(self):
-        url = self._auth.getURL('cancel')
+        url = self._config.getURL('cancel')
 
         payload = {
-            'apikey': self._auth.apikey,
+            'apikey': self._config.apikey,
             'transferid': self.transferid,
             'transferkey': self.transferkey
             }
@@ -258,14 +236,14 @@ class Transfer():
         print res.json()
 
     def share(self, to=[], message=u''):
-        url = self._auth.getURL('share')
+        url = self._config.getURL('share')
 
         payload = {
-            'apikey': self._auth.apikey,
-            'logintoken': self._auth.logintoken,
+            'apikey': self._config.apikey,
+            'logintoken': self._config.logintoken,
             'transferid': self.transferid,
             'to': ','.join(to),
-            'from': self._auth.username,
+            'from': self._config.username,
             'message': message
             }
 
@@ -276,10 +254,10 @@ class Transfer():
         print res.json()
 
     def forward(self, to=[]):
-        url = self._auth.getURL('forward')
+        url = self._config.getURL('forward')
 
         payload = {
-            'apikey': self._auth.apikey,
+            'apikey': self._config.apikey,
             'transferid': self.transferid,
             'transferkey': self.transferkey,
             'to': ','.join(to)
@@ -292,12 +270,12 @@ class Transfer():
         print res.json()
 
     def get(self):
-        url = self._auth.getURL('get')
+        url = self._config.getURL('get')
 
         payload = {
-            'apikey': self._auth.apikey,
+            'apikey': self._config.apikey,
             'transferid': self.transferid,
-            'logintoken': self._auth.logintoken
+            'logintoken': self._config.logintoken
             }
 
         res = requests.post(url=url, params=payload)
@@ -307,11 +285,11 @@ class Transfer():
         print res.json()
 
     def update(self, **kwargs):
-        url = self._auth.getURL('update')
+        url = self._config.getURL('update')
 
         payload = {
-            'apikey': self._auth.apikey,
-            'logintoken': self._auth.logintoken,
+            'apikey': self._config.apikey,
+            'logintoken': self._config.logintoken,
             'transferid': self.transferid,
             'message': kwargs.get('message'),
             'days': kwargs['days'],
@@ -343,24 +321,18 @@ class Transfer():
 
     def _initialize(self):
         payload = {
-            'apikey': self._auth.apikey,
-            'logintoken': self._auth.logintoken,
+            'apikey': self._config.apikey,
+            'logintoken': self._config.logintoken,
             }
         payload.update(self._transfer_info)
 
-        url = self._auth.getURL('init')
+        url = self._config.getURL('init')
 
         res = requests.post(url=url, params=payload)
         if not res:
             raise FMBaseError(res.status_code)
 
         return res.json()
-
-
-class User():
-
-    def __init__(self):
-        super(User, self).__init__()
 
 
 class Contacts():

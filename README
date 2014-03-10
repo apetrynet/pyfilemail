@@ -4,10 +4,11 @@ By: Daniel Flehner Heen
 Pyhton wrapper for www.filemail.com API
 using requests by Kenneth Reitz.
 
-from filemail import Filemail
+import filemail
 
-fm = Filemail()
-login = fm.login('myemail@mailprovider.com')
+
+user = filemail.login('user@mailprovider.com')
+
 transfer = Transfer(login,
                     to='lucky@receiver.com',
                     subject='My first filemail transfer',
@@ -17,7 +18,15 @@ transfer = Transfer(login,
                     days=7,
                     password='')
 
-transfer.addfile('/path/to/myfile.pdf')
+transfer.addfile('/path/to/myfile.ext')
 transfer.complete()
 transfer.get()
-fm.logout()
+
+user.getReceived(age=1)
+sent = user.getSent()
+print sent
+
+print user.getInfo()
+
+user.save()
+user.logout()

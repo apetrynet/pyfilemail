@@ -1,2 +1,7 @@
 # -*- coding: utf-8 -*-
-__all__ = ['Filemail', 'Transfer']
+from filemail import User
+
+
+def login(user, api_key=None, password=None, **kwargs):
+    user = User(user, api_key, password, **kwargs)
+    return user
