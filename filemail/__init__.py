@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from filemail import User
+from filemail import User, Transfer
 
 
 def login(user, api_key=None, password=None, **kwargs):
