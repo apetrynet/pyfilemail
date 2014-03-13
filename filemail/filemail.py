@@ -61,7 +61,12 @@ class User():
 
         if not res.ok:
             print res.json()['errormessage']
+
         return res.json()
+        #for file_data in res.json()['transfers']['files']:
+            #self.files.append(FMFile(file_data))
+
+        #return sef.files
 
     def getReceived(self, age=None, for_all=True):
         url = self._config.getURL('received_get')
@@ -133,6 +138,7 @@ class Transfer():
         self._config = self._user.getConfig()
         self._transfer_info = kwargs
         self._transfer_info.update({'from': self._user.username})
+        self.files = list()
 
         response = self._initialize()
 
@@ -142,37 +148,21 @@ class Transfer():
 
         print response
 
-    def addfile(self, file_path, **kwargs):
+    def addfile(self, file_path):
         if not os.path.isfile:
             raise FMBaseError('No such file: {}'.format(file_path))
 
         url = self.transferurl
 
-        file_specs = self._getFileSpecs(file_path)
-
-        payload = {
-            'transferid': self.transferid,
-            'transferkey': self.transferkey,
-            'fileid': file_specs['fileid'],
-            'thefilename': file_specs['filename'],
-            'chunkpos': 0,
-            'totalsize': file_specs['filesize'],
-            'md5': file_specs['md5'],
-            'compressed': file_specs['compressed'],
-            'name': file_specs['filename'],
-            'filename': file_specs['filename'],
-            'content-type': file_specs['content-type']
-            }
+        fm_file = FMFile(self, file_path)
 
         res = requests.post(url=url,
                             files={'file': open(file_path, 'rb')},
-                            data=payload,
-                            hooks=dict(response=self.print_url),
-                            stream=True)
-        print res
+                            data=fm_file.payload)
 
-    def print_url(self, r, *args, **kwargs):
-        print r.iter_lines()
+        if not res.ok:
+            print res.json()['errormessage']
+        print res.json()
 
     def complete(self, keep_transfer_key=False):
         url = self._config.getURL('complete')
@@ -242,7 +232,7 @@ class Transfer():
             'apikey': self._config.apikey,
             'logintoken': self._config.logintoken,
             'transferid': self.transferid,
-            'to': ','.join(to),
+            'to': ','.join(list(to)),
             'from': self._config.username,
             'message': message
             }
@@ -269,7 +259,7 @@ class Transfer():
             print res.json()['errormessage']
         print res.json()
 
-    def get(self):
+    def getFiles(self):
         url = self._config.getURL('get')
 
         payload = {
@@ -282,7 +272,11 @@ class Transfer():
 
         if not res.ok:
             print res.json()['errormessage']
-        print res.json()
+
+        for file_data in res.json()['transfer']['files']:
+            self.files.append(FMFile(file_data))
+
+        return sef.files
 
     def update(self, **kwargs):
         url = self._config.getURL('update')
@@ -303,22 +297,6 @@ class Transfer():
             print res.json()['errormessage']
         print res.json()
 
-    def _getFileSpecs(self, file_path):
-        fileid = uuid4()
-        md5hash = md5(open(file_path, 'rb').read()).digest()
-        compressed = file_path[-3:] in ['zip', 'rar', 'tar', '.gz']
-
-        results = {
-            'fileid': str(fileid).replace('-', ''),
-            'filename': os.path.basename(file_path),
-            'filesize': os.path.getsize(file_path),
-            'md5': md5hash.encode('base64')[:-1],
-            'compressed': compressed,
-            'content-type': guess_type(file_path)[0]
-            }
-
-        return results
-
     def _initialize(self):
         payload = {
             'apikey': self._config.apikey,
@@ -335,10 +313,79 @@ class Transfer():
         return res.json()
 
 
-class Files():
+class FMFile(object):
 
-    def __init__(self, transfer):
-        pass
+    def __init__(self, transfer, file_path=None, file_data=None):
+        if not isinstance(transfer, Transfer):
+            raise FMBaseError('Please pass a Transfer object as arg0')
+
+        self.payload = {
+            'transferid': transfer.transferid,
+            'transferkey': transfer.transferkey,
+            'fileid': None,
+            'thefilename': None,
+            'chunkpos': 0,
+            'totalsize': None,
+            'md5': None,
+            'compressed': None,
+            'filename': None,
+            'content-type': None
+            }
+
+        if file_path:
+            self.file_path = self._addFile(file_path)
+            self._updatePayload(file_path)
+
+        if file_data:
+            if not isinstance(file_data, dict):
+                raise FMBaseError('file_data must be a dict')
+
+            self._updatePayload(file_data)
+        print self.payload
+
+    def _updatePayload(self, file_path=None, file_data=None):
+        if file_data:
+            if not isinstance(file_data, dict):
+                raise FMBaseError('file_data must be a dict')
+            self.payload.update(file_data)
+            return True
+        if file_path:
+            self.payload.update(self._getFileSpecs(file_path))
+            return True
+        return False
+
+    def _addFile(self, file_path):
+        if not os.path.isfile(file_path):
+            return None
+
+        return file_path
+
+    def _getFileSpecs(self, file_path):
+        fileid = str(uuid4()).replace('-', '')
+        md5hash = md5(open(file_path, 'rb').read()).digest()
+        compressed = file_path[-3:] in ['zip', 'rar', 'tar', '.gz', '.7z']
+
+        specs = {
+            'fileid': fileid,
+            'filename': os.path.basename(file_path),
+            'thefilename': os.path.basename(file_path),
+            'totalsize': os.path.getsize(file_path),
+            'md5': md5hash.encode('base64')[:-1],
+            'compressed': compressed,
+            'content-type': guess_type(file_path)[0]
+            }
+
+        return specs
+
+    def __setattribute__(self, attr, value):
+        if attr == 'file_path':
+            self.file_path = self._addFile(value)
+            self._updatePayload(value)
+
+        super(FMFile, self).__setattribute__(attr, value)
+
+    def __repr__(self):
+        return dict(self._payload)
 
 
 class Contacts():
