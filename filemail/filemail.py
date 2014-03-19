@@ -62,11 +62,12 @@ class User():
         if not res.ok:
             print res.json()['errormessage']
 
-        return res.json()
-        #for file_data in res.json()['transfers']['files']:
-            #self.files.append(FMFile(file_data))
+        #return res.json()
+        files = list()
+        for transfer in res.json()['transfers']:
+            files.append(FMFile(file_data))
 
-        #return sef.files
+        return files
 
     def getReceived(self, age=None, for_all=True):
         url = self._config.getURL('received_get')
@@ -162,7 +163,8 @@ class Transfer():
 
         if not res.ok:
             print res.json()['errormessage']
-        print res.json()
+            return False
+        return True
 
     def complete(self, keep_transfer_key=False):
         url = self._config.getURL('complete')
@@ -276,7 +278,7 @@ class Transfer():
         for file_data in res.json()['transfer']['files']:
             self.files.append(FMFile(file_data))
 
-        return sef.files
+        return self.files
 
     def update(self, **kwargs):
         url = self._config.getURL('update')
@@ -385,7 +387,7 @@ class FMFile(object):
         super(FMFile, self).__setattribute__(attr, value)
 
     def __repr__(self):
-        return dict(self._payload)
+        return dict(self.payload)
 
 
 class Contacts():
