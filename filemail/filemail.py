@@ -63,11 +63,10 @@ class User():
             print res.json()['errormessage']
 
         #return res.json()
-        files = list()
+        transfers = list()
         for transfer in res.json()['transfers']:
-            files.append(FMFile(file_data))
-
-        return files
+            transfers.append(Transfer(self, **transfer))
+        return transfers
 
     def getReceived(self, age=None, for_all=True):
         url = self._config.getURL('received_get')
@@ -137,23 +136,22 @@ class Transfer():
     def __init__(self, user, **kwargs):
         self._user = user
         self._config = self._user.getConfig()
-        self._transfer_info = kwargs
+        self._transfer_info = dict(kwargs)
         self._transfer_info.update({'from': self._user.username})
+
         self.files = list()
 
-        response = self._initialize()
+        if 'status' not in self._transfer_info:
+            print 'init'
+            self._transfer_info.update(self._initialize())
 
-        self.transferid = response['transferid']
-        self.transferkey = response['transferkey']
-        self.transferurl = response['transferurl']
-
-        print response
+        print self._transfer_info
 
     def addfile(self, file_path):
         if not os.path.isfile:
             raise FMBaseError('No such file: {}'.format(file_path))
 
-        url = self.transferurl
+        url = self._transfer_info.get('transferurl')
 
         fm_file = FMFile(self, file_path)
 
@@ -171,8 +169,8 @@ class Transfer():
 
         payload = {
             'apikey': self._config.apikey,
-            'transferid': self.transferid,
-            'transferkey': self.transferkey,
+            'transferid': self._transfer_info.get('transferid'),
+            'transferkey': self._transfer_info.get('transferkey'),
             'keep_transfer_key': keep_transfer_key
             }
 
@@ -187,7 +185,7 @@ class Transfer():
 
         payload = {
             'apikey': self._config.apikey,
-            'transferid': self.transferid,
+            'transferid': self._transfer_info.get('transferid'),
             'logintoken': self._config.logintoken
             }
 
@@ -202,8 +200,8 @@ class Transfer():
 
         payload = {
             'apikey': self._config.apikey,
-            'transferid': self.transferid,
-            'transferkey': self.transferkey
+            'transferid': self._transfer_info.get('transferid'),
+            'transferkey': self._transfer_info.get('transferkey')
             }
 
         res = requests.post(url=url, params=payload)
@@ -217,8 +215,8 @@ class Transfer():
 
         payload = {
             'apikey': self._config.apikey,
-            'transferid': self.transferid,
-            'transferkey': self.transferkey
+            'transferid': self._transfer_info.get('transferid'),
+            'transferkey': self._transfer_info.get('transferkey')
             }
 
         res = requests.post(url=url, params=payload)
@@ -233,7 +231,7 @@ class Transfer():
         payload = {
             'apikey': self._config.apikey,
             'logintoken': self._config.logintoken,
-            'transferid': self.transferid,
+            'transferid': self._transfer_info.get('transferid'),
             'to': ','.join(list(to)),
             'from': self._config.username,
             'message': message
@@ -250,8 +248,8 @@ class Transfer():
 
         payload = {
             'apikey': self._config.apikey,
-            'transferid': self.transferid,
-            'transferkey': self.transferkey,
+            'transferid': self._transfer_info.get('transferid'),
+            'transferkey': self._transfer_info.get('transferkey'),
             'to': ','.join(to)
             }
 
@@ -266,7 +264,7 @@ class Transfer():
 
         payload = {
             'apikey': self._config.apikey,
-            'transferid': self.transferid,
+            'transferid': self._transfer_info.get('transferid'),
             'logintoken': self._config.logintoken
             }
 
@@ -286,7 +284,7 @@ class Transfer():
         payload = {
             'apikey': self._config.apikey,
             'logintoken': self._config.logintoken,
-            'transferid': self.transferid,
+            'transferid': self._transfer_info.get('transferid'),
             'message': kwargs.get('message'),
             'days': kwargs['days'],
             'downloads': kwargs['downloads'],
@@ -318,12 +316,19 @@ class Transfer():
 class FMFile(object):
 
     def __init__(self, transfer, file_path=None, file_data=None):
-        if not isinstance(transfer, Transfer):
-            raise FMBaseError('Please pass a Transfer object as arg0')
+        if not isinstance(transfer, (Transfer, dict)):
+            raise FMBaseError('Please pass a Transfer or dict object as arg0')
+
+        if isinstance(transfer, dict):
+            transfer_id = transfer['id']
+            transfer_key = transfer.get('key', None)
+        else:
+            transfer_id = transfer.transferid
+            transfer_key = transfer.transferkey
 
         self.payload = {
-            'transferid': transfer.transferid,
-            'transferkey': transfer.transferkey,
+            'transferid': transfer_id,
+            'transferkey': transfer_key,
             'fileid': None,
             'thefilename': None,
             'chunkpos': 0,
