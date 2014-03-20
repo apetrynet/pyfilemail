@@ -145,7 +145,10 @@ class Transfer():
             print 'init'
             self._transfer_info.update(self._initialize())
 
-        print self._transfer_info
+        if 'id' in self._transfer_info:
+            self.transferid = self._transfer_info.get('id')
+        else:
+            self.transferid = self._transfer_info.get('transferid')
 
     def addfile(self, file_path):
         if not os.path.isfile:
@@ -264,7 +267,7 @@ class Transfer():
 
         payload = {
             'apikey': self._config.apikey,
-            'transferid': self._transfer_info.get('transferid'),
+            'transferid': self.transferid,
             'logintoken': self._config.logintoken
             }
 
@@ -273,8 +276,14 @@ class Transfer():
         if not res.ok:
             print res.json()['errormessage']
 
-        for file_data in res.json()['transfer']['files']:
-            self.files.append(FMFile(file_data))
+        self._transfer_info.update(res.json()['transfer'])
+        files = self._transfer_info['files']
+
+        del(self._transfer_info['files'])
+
+        for file_data in files:
+            self.files.append(FMFile(transfer=self._transfer_info,
+                                     file_data=file_data))
 
         return self.files
 
@@ -315,20 +324,13 @@ class Transfer():
 
 class FMFile(object):
 
-    def __init__(self, transfer, file_path=None, file_data=None):
-        if not isinstance(transfer, (Transfer, dict)):
-            raise FMBaseError('Please pass a Transfer or dict object as arg0')
-
-        if isinstance(transfer, dict):
-            transfer_id = transfer['id']
-            transfer_key = transfer.get('key', None)
-        else:
-            transfer_id = transfer.transferid
-            transfer_key = transfer.transferkey
+    def __init__(self, transfer=None, file_path=None, file_data=None):
+        #if not isinstance(transfer, (Transfer, dict)):
+            #raise FMBaseError('Please pass a Transfer or dict object as arg0')
 
         self.payload = {
-            'transferid': transfer_id,
-            'transferkey': transfer_key,
+            'transferid': None,
+            'transferkey': None,
             'fileid': None,
             'thefilename': None,
             'chunkpos': 0,
@@ -347,8 +349,11 @@ class FMFile(object):
             if not isinstance(file_data, dict):
                 raise FMBaseError('file_data must be a dict')
 
-            self._updatePayload(file_data)
-        print self.payload
+            self._updatePayload(file_data=file_data)
+        #print self.payload
+
+    def download(self):
+        pass
 
     def _updatePayload(self, file_path=None, file_data=None):
         if file_data:
@@ -392,7 +397,7 @@ class FMFile(object):
         super(FMFile, self).__setattribute__(attr, value)
 
     def __repr__(self):
-        return dict(self.payload)
+        return repr(self.payload)
 
 
 class Contacts():
