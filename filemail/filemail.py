@@ -142,7 +142,6 @@ class Transfer():
         self.files = list()
 
         if 'status' not in self._transfer_info:
-            print 'init'
             self._transfer_info.update(self._initialize())
 
         if 'id' in self._transfer_info:
@@ -158,9 +157,17 @@ class Transfer():
 
         fm_file = FMFile(self, file_path)
 
+        def feedMe(url):
+            with open(url, 'rb') as f:
+                while True:
+                    data = f.read(1024)
+                    if not data:
+                        break
+                    yield data
+
         res = requests.post(url=url,
-                            files={'file': open(file_path, 'rb')},
-                            data=fm_file.payload)
+                            params=fm_file.payload,
+                            data=feedMe(file_path))
 
         if not res.ok:
             print res.json()['errormessage']
@@ -282,7 +289,7 @@ class Transfer():
         del(self._transfer_info['files'])
 
         for file_data in files:
-            self.files.append(FMFile(transfer=self._transfer_info,
+            self.files.append(FMFile(transfer=self,
                                      file_data=file_data))
 
         return self.files
@@ -316,9 +323,9 @@ class Transfer():
         url = self._config.getURL('init')
 
         res = requests.post(url=url, params=payload)
-        if not res:
+        if not res.ok:
+            print res.status_code
             raise FMBaseError(res.status_code)
-
         return res.json()
 
 
@@ -340,6 +347,9 @@ class FMFile(object):
             'filename': None,
             'content-type': None
             }
+
+        if transfer:
+            self.payload.update(transfer._transfer_info)
 
         if file_path:
             self.file_path = self._addFile(file_path)
