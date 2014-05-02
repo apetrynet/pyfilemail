@@ -48,13 +48,13 @@ class User():
             print res.json()['errormessage']
         return res.json()
 
-    def getSent(self, get_all=True):
+    def getSent(self, expired=False):
         url = self._config.getURL('sent_get')
 
         payload = {
             'apikey': self._config.apikey,
             'logintoken': self._config.logintoken,
-            'getall': get_all
+            'getall': expired
             }
 
         res = requests.post(url=url, params=payload)
@@ -149,7 +149,7 @@ class Transfer():
         else:
             self.transferid = self._transfer_info.get('transferid')
 
-    def addfile(self, file_path):
+    def addfile(self, file_path, callback=None, chunksize=2048):
         if not os.path.isfile:
             raise FMBaseError('No such file: {}'.format(file_path))
 
@@ -158,11 +158,18 @@ class Transfer():
         fm_file = FMFile(self, file_path)
 
         def feedMe(url):
+            incr = 100.0 / (fm_file.payload['totalsize'] / chunksize)
+            count = 0
             with open(url, 'rb') as f:
                 while True:
-                    data = f.read(1024)
+                    count += 1
+                    data = f.read(chunksize)
                     if not data:
                         break
+
+                    if callback is not None:
+                        callback(int(incr * count))
+
                     yield data
 
         res = requests.post(url=url,
@@ -356,9 +363,6 @@ class FMFile(object):
             self._updatePayload(file_path)
 
         if file_data:
-            if not isinstance(file_data, dict):
-                raise FMBaseError('file_data must be a dict')
-
             self._updatePayload(file_data=file_data)
         #print self.payload
 
@@ -369,11 +373,16 @@ class FMFile(object):
         if file_data:
             if not isinstance(file_data, dict):
                 raise FMBaseError('file_data must be a dict')
+
             self.payload.update(file_data)
+
             return True
+
         if file_path:
             self.payload.update(self._getFileSpecs(file_path))
+
             return True
+
         return False
 
     def _addFile(self, file_path):
