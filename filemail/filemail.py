@@ -16,8 +16,9 @@ class User():
 
     def __init__(self, username, apikey=None, password=None, **kwargs):
         self._logged_in = False
+        self.username = username
 
-        self.config = Config(username)
+        self.config = Config(self.username)
         if apikey and password:
             self.config.set('apikey', apikey)
             self.config.set('password', password)
@@ -34,11 +35,13 @@ class User():
             self.config.load(config_file)
 
     def getInfo(self):
+        self.validateLoginStatus()
+
         url = getURL('user_get')
 
         payload = {
-            'apikey': self.config.apikey,
-            'logintoken': self.config.logintoken
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken')
             }
 
         res = requests.post(url=url, params=payload)
@@ -47,23 +50,27 @@ class User():
             print res.json()['errormessage']
         return res.json()
 
-    def updateInfo(self, **kwargs):
-        self.config.update(kwargs)
+    def updateUserInfo(self, info):
+        self.validateLoginStatus()
+
+        self.config.update(info)
 
         url = getURL('user_update')
 
-        res = requests.post(url=url, params=self.config)
+        res = requests.post(url=url, params=self.config.dump())
 
         if not res.ok:
             print res.json()['errormessage']
         return res.json()
 
     def getSent(self, expired=False):
+        self.validateLoginStatus()
+
         url = getURL('sent_get')
 
         payload = {
-            'apikey': self.config.apikey,
-            'logintoken': self.config.logintoken,
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken'),
             'getall': expired
             }
 
@@ -79,6 +86,8 @@ class User():
         return transfers
 
     def getReceived(self, age=None, for_all=True):
+        self.validateLoginStatus()
+
         url = getURL('received_get')
 
         if age:
@@ -89,8 +98,8 @@ class User():
             age = timegm(past.utctimetuple())
 
         payload = {
-            'apikey': self.config.apikey,
-            'logintoken': self.config.logintoken,
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken'),
             'getForAllUsers': for_all,
             'from': age
             }
@@ -113,6 +122,11 @@ class User():
     def logout(self):
         self._connection('logout')
         return
+
+    def validateLoginStatus(self):
+        if self._logged_in:
+            return True
+        raise Exception('You must be logged in')
 
     def _connection(self, action):
         if action not in ['login', 'logout']:
@@ -145,11 +159,10 @@ class Transfer():
 
     def __init__(self, user, **kwargs):
         self._user = user
-        self.config = self._user.getConfig()
+        self._files = []
+        self.config = self._user.config
         self._transfer_info = dict(kwargs)
         self._transfer_info.update({'from': self._user.username})
-
-        self.files = list()
 
         if 'status' not in self._transfer_info:
             self._transfer_info.update(self._initialize())
@@ -159,43 +172,61 @@ class Transfer():
         else:
             self.transferid = self._transfer_info.get('transferid')
 
-    def addfile(self, file_path, callback=None, chunksize=2048):
-        if not os.path.isfile:
-            raise FMBaseError('No such file: {}'.format(file_path))
+    def addFile(self, filename):
+        if not os.path.isfile(filename):
+            raise FMBaseError('No such file: {}'.format(filename))
 
+        fmfile = FMFile(filename)
+        self._files.append(fmfile)
+
+    def addFiles(self, files):
+        for filename in files:
+            self.addFile(filename)
+
+    def files(self):
+        return self._files
+
+    def send(self, callback=None):
         url = self._transfer_info.get('transferurl')
 
-        fm_file = FMFile(self, file_path)
+        for fmfile in self._files:
+            fmfile.set('transferid', self._transfer_info['transferid'])
+            fmfile.set('transferkey', self._transfer_info['transferkey'])
+            print fmfile.payload()
+            res = requests.post(url=url,
+                                params=fmfile.payload(),
+                                data=self.fileStreamer(fmfile, callback),
+                                stream=True)
 
-        def feedMe(url):
-            incr = 100.0 / (fm_file.payload['totalsize'] / chunksize)
-            count = 0
-            with open(url, 'rb') as f:
-                while True:
-                    count += 1
-                    data = f.read(chunksize)
-                    if not data:
-                        break
+            if not res.ok:
+                print res
+                return False
+        self.complete()
 
-                    if callback is not None:
-                        callback(int(incr * count))
+    def fileStreamer(self, fmfile, callback=None):
+        chunksize = 65536
+        incr = 100.0 / (fmfile.get('totalsize') / chunksize)
+        count = 0
+        data = None
+        with open(fmfile.fullpath, 'rb') as f:
+            while True:
+                data = f.read(chunksize)
+                fmfile.set('chunkpos', f.tell())
+                if not data:
+                    break
 
-                    yield data
+                if callback is not None:
+                    callback(int(incr * count))
 
-        res = requests.post(url=url,
-                            params=fm_file.payload,
-                            data=feedMe(file_path))
+                count += 1
 
-        if not res.ok:
-            print res.json()['errormessage']
-            return False
-        return True
+                yield data
 
     def complete(self, keep_transfer_key=False):
         url = getURL('complete')
 
         payload = {
-            'apikey': self.config.apikey,
+            'apikey': self.config.get('apikey'),
             'transferid': self._transfer_info.get('transferid'),
             'transferkey': self._transfer_info.get('transferkey'),
             'keep_transfer_key': keep_transfer_key
@@ -211,9 +242,9 @@ class Transfer():
         url = getURL('delete')
 
         payload = {
-            'apikey': self.config.apikey,
+            'apikey': self.config.get('apikey'),
             'transferid': self._transfer_info.get('transferid'),
-            'logintoken': self.config.logintoken
+            'logintoken': self.config.get('logintoken')
             }
 
         res = requests.post(url=url, params=payload)
@@ -241,7 +272,7 @@ class Transfer():
         url = getURL('cancel')
 
         payload = {
-            'apikey': self.config.apikey,
+            'apikey': self.config.get('apikey'),
             'transferid': self._transfer_info.get('transferid'),
             'transferkey': self._transfer_info.get('transferkey')
             }
@@ -256,11 +287,11 @@ class Transfer():
         url = getURL('share')
 
         payload = {
-            'apikey': self.config.apikey,
-            'logintoken': self.config.logintoken,
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken'),
             'transferid': self._transfer_info.get('transferid'),
             'to': ','.join(list(to)),
-            'from': self.config.username,
+            'from': self.config.get('username'),
             'message': message
             }
 
@@ -274,7 +305,7 @@ class Transfer():
         url = getURL('forward')
 
         payload = {
-            'apikey': self.config.apikey,
+            'apikey': self.config.get('apikey'),
             'transferid': self._transfer_info.get('transferid'),
             'transferkey': self._transfer_info.get('transferkey'),
             'to': ','.join(to)
@@ -290,9 +321,9 @@ class Transfer():
         url = getURL('get')
 
         payload = {
-            'apikey': self.config.apikey,
+            'apikey': self.config.get('apikey'),
             'transferid': self.transferid,
-            'logintoken': self.config.logintoken
+            'logintoken': self.config.get('logintoken')
             }
 
         res = requests.post(url=url, params=payload)
@@ -315,8 +346,8 @@ class Transfer():
         url = getURL('update')
 
         payload = {
-            'apikey': self.config.apikey,
-            'logintoken': self.config.logintoken,
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken'),
             'transferid': self._transfer_info.get('transferid'),
             'message': kwargs.get('message'),
             'days': kwargs['days'],
@@ -332,8 +363,8 @@ class Transfer():
 
     def _initialize(self):
         payload = {
-            'apikey': self.config.apikey,
-            'logintoken': self.config.logintoken,
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken'),
             }
         payload.update(self._transfer_info)
 
@@ -345,88 +376,74 @@ class Transfer():
             raise FMBaseError(res.status_code)
         return res.json()
 
+    def __repr__(self):
+        return repr(self._transfer_info)
 
-class FMFile(object):
 
-    def __init__(self, transfer=None, file_path=None, file_data=None):
-        #if not isinstance(transfer, (Transfer, dict)):
-            #raise FMBaseError('Please pass a Transfer or dict object as arg0')
+class FMFile():
 
-        self.payload = {
-            'transferid': None,
-            'transferkey': None,
-            'fileid': None,
-            'thefilename': None,
-            'chunkpos': 0,
-            'totalsize': None,
-            'md5': None,
-            'compressed': None,
-            'filename': None,
-            'content-type': None
-            }
+    def __init__(self, fullpath=None, data=None):
+        self._payload = {}
+        self.fullpath = fullpath
+        self.path = None
+        self.filename = None
 
-        if transfer:
-            self.payload.update(transfer._transfer_info)
+        if self.fullpath is not None:
+            self.addFile(self.fullpath)
 
-        if file_path:
-            self.file_path = self._addFile(file_path)
-            self._updatePayload(file_path)
+        if data is not None:
+            self.updatePayload(data)
 
-        if file_data:
-            self._updatePayload(file_data=file_data)
-        #print self.payload
+    def addFile(self, filename):
+        if not os.path.isfile(filename):
+            raise Exception('No such file: {}'.format(filename))
 
-    def download(self):
+        self.path, self.filename = os.path.split(filename)
+
+        self.updatePayload(self.getFileSpecs())
+
+    def download(self, path):
         pass
 
-    def _updatePayload(self, file_path=None, file_data=None):
-        if file_data:
-            if not isinstance(file_data, dict):
-                raise FMBaseError('file_data must be a dict')
+    def set(self, key, value):
+        self._payload[key] = value
 
-            self.payload.update(file_data)
+    def get(self, key):
+        if key in self._payload:
+            return self._payload[key]
 
-            return True
+        return None
 
-        if file_path:
-            self.payload.update(self._getFileSpecs(file_path))
+    def updatePayload(self, data):
+        if not isinstance(data, dict):
+            raise Exception('A dict must be passed')
 
-            return True
+        for key, value in data.items():
+            self.set(key, value)
 
-        return False
+    def payload(self):
+        return self._payload
 
-    def _addFile(self, file_path):
-        if not os.path.isfile(file_path):
-            return None
-
-        return file_path
-
-    def _getFileSpecs(self, file_path):
+    def getFileSpecs(self):
         fileid = str(uuid4()).replace('-', '')
-        md5hash = md5(open(file_path, 'rb').read()).digest()
-        compressed = file_path[-3:] in ['zip', 'rar', 'tar', '.gz', '.7z']
+        md5hash = md5(open(self.fullpath, 'rb').read()).digest()
+        compressed = self.filename[-3:] in ['zip', 'rar', 'tar', '.gz', '.7z']
 
         specs = {
             'fileid': fileid,
-            'filename': os.path.basename(file_path),
-            'thefilename': os.path.basename(file_path),
-            'totalsize': os.path.getsize(file_path),
+            'filename': self.filename,
+            'thefilename': self.filename,
+            'totalsize': os.path.getsize(self.fullpath),
             'md5': md5hash.encode('base64')[:-1],
             'compressed': compressed,
-            'content-type': guess_type(file_path)[0]
+            'content-type': guess_type(self.fullpath)[0],
+            'chunkpos': 0
             }
 
         return specs
 
-    def __setattribute__(self, attr, value):
-        if attr == 'file_path':
-            self.file_path = self._addFile(value)
-            self._updatePayload(value)
-
-        super(FMFile, self).__setattribute__(attr, value)
-
     def __repr__(self):
-        return repr(self.payload)
+        return repr(self.payload())
 
 
 class Contacts():
