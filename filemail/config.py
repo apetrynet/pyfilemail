@@ -49,6 +49,18 @@ class Config():
             return self._config[key]
         return None
 
+    def update(self, config=None):
+        if config is None:
+            return
+        if not isinstance(config, dict):
+            raise Exception('You need to pass a dict')
+
+        for key, value in config.items():
+            self.set(key, value)
+
+    def dump(self):
+        return self._config
+
     def validKey(self, key):
         return key in self.valid_keys
 
@@ -98,4 +110,4 @@ class Config():
         return None
 
     def __repr__(self):
-        return self._config
+        return repr(self._config)
