@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-from filemail import User, Transfer
+from filemail import User, Transfer, Config
 
 
-def login(user, api_key=None, password=None, **kwargs):
-    user = User(user, api_key, password, **kwargs)
+def login(username, apikey=None, password=None, **kwargs):
+    user = User(username, apikey, password, **kwargs)
+    user.login()
     return user
