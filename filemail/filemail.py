@@ -7,28 +7,38 @@ from mimetypes import guess_type
 from datetime import datetime, timedelta
 from calendar import timegm
 
+from urls import getURL
 from config import Config
 from errors import *
 
 
 class User():
 
-    def __init__(self, user, api_key, password, **kwargs):
+    def __init__(self, username, apikey=None, password=None, **kwargs):
         self._logged_in = False
 
-        self._config = Config(user)
-        self.username = self._config.username
-        self._config['api_key'] = self._config.apikey or api_key
-        self._config['password'] = self._config.password or password
+        self.config = Config(username)
+        if apikey and password:
+            self.config.set('apikey', apikey)
+            self.config.set('password', password)
+            for key, value in kwargs.items():
+                self.config.set(key, value)
 
-        self._login()
+        else:
+            if 'config_file' in kwargs:
+                config_file = kwargs['config_file']
+
+            else:
+                config_file = None
+
+            self.config.load(config_file)
 
     def getInfo(self):
-        url = self._config.getURL('user_get')
+        url = getURL('user_get')
 
         payload = {
-            'apikey': self._config.apikey,
-            'logintoken': self._config.logintoken
+            'apikey': self.config.apikey,
+            'logintoken': self.config.logintoken
             }
 
         res = requests.post(url=url, params=payload)
@@ -38,22 +48,22 @@ class User():
         return res.json()
 
     def updateInfo(self, **kwargs):
-        self._config.update(kwargs)
+        self.config.update(kwargs)
 
-        url = self._config.getURL('user_update')
+        url = getURL('user_update')
 
-        res = requests.post(url=url, params=self._config)
+        res = requests.post(url=url, params=self.config)
 
         if not res.ok:
             print res.json()['errormessage']
         return res.json()
 
     def getSent(self, expired=False):
-        url = self._config.getURL('sent_get')
+        url = getURL('sent_get')
 
         payload = {
-            'apikey': self._config.apikey,
-            'logintoken': self._config.logintoken,
+            'apikey': self.config.apikey,
+            'logintoken': self.config.logintoken,
             'getall': expired
             }
 
@@ -69,7 +79,7 @@ class User():
         return transfers
 
     def getReceived(self, age=None, for_all=True):
-        url = self._config.getURL('received_get')
+        url = getURL('received_get')
 
         if age:
             if not isinstance(age, int) or age < 0 or age > 90:
@@ -79,8 +89,8 @@ class User():
             age = timegm(past.utctimetuple())
 
         payload = {
-            'apikey': self._config.apikey,
-            'logintoken': self._config.logintoken,
+            'apikey': self.config.apikey,
+            'logintoken': self.config.logintoken,
             'getForAllUsers': for_all,
             'from': age
             }
@@ -92,12 +102,12 @@ class User():
         return res.json()
 
     def getConfig(self):
-        return self._config
+        return self.config
 
     def save(self, config_path=None):
-        self._config.save(config_path)
+        self.config.save(config_path)
 
-    def _login(self):
+    def login(self):
         self._connection('login')
 
     def logout(self):
@@ -108,13 +118,13 @@ class User():
         if action not in ['login', 'logout']:
             raise FMBaseError('{}, is not a vaid action'.format(action))
 
-        url = self._config.getURL(action)
+        url = getURL(action)
         auth_keys = {
             'login': ['apikey', 'username', 'password', 'source', 'logintoken'],
             'logout': ['apikey', 'logintoken']
             }
 
-        payload = map(lambda k: (k, self._config[k]), auth_keys[action])
+        payload = map(lambda k: (k, self.config.get(k)), auth_keys[action])
 
         res = requests.post(
             url=url,
@@ -126,7 +136,7 @@ class User():
 
         if action == 'login':
             login_token = res.json()['logintoken']
-            self._config['logintoken'] = login_token
+            self.config.set('logintoken', login_token)
 
         self._logged_in = not self._logged_in
 
@@ -135,7 +145,7 @@ class Transfer():
 
     def __init__(self, user, **kwargs):
         self._user = user
-        self._config = self._user.getConfig()
+        self.config = self._user.getConfig()
         self._transfer_info = dict(kwargs)
         self._transfer_info.update({'from': self._user.username})
 
@@ -182,10 +192,10 @@ class Transfer():
         return True
 
     def complete(self, keep_transfer_key=False):
-        url = self._config.getURL('complete')
+        url = getURL('complete')
 
         payload = {
-            'apikey': self._config.apikey,
+            'apikey': self.config.apikey,
             'transferid': self._transfer_info.get('transferid'),
             'transferkey': self._transfer_info.get('transferkey'),
             'keep_transfer_key': keep_transfer_key
@@ -198,12 +208,12 @@ class Transfer():
         print res.json()
 
     def delete(self):
-        url = self._config.getURL('delete')
+        url = getURL('delete')
 
         payload = {
-            'apikey': self._config.apikey,
+            'apikey': self.config.apikey,
             'transferid': self._transfer_info.get('transferid'),
-            'logintoken': self._config.logintoken
+            'logintoken': self.config.logintoken
             }
 
         res = requests.post(url=url, params=payload)
@@ -213,10 +223,10 @@ class Transfer():
         print res.json()
 
     def zip(self):
-        url = self._config.getURL('zip')
+        url = getURL('zip')
 
         payload = {
-            'apikey': self._config.apikey,
+            'apikey': self.config.apikey,
             'transferid': self._transfer_info.get('transferid'),
             'transferkey': self._transfer_info.get('transferkey')
             }
@@ -228,10 +238,10 @@ class Transfer():
         print res.json()
 
     def cancel(self):
-        url = self._config.getURL('cancel')
+        url = getURL('cancel')
 
         payload = {
-            'apikey': self._config.apikey,
+            'apikey': self.config.apikey,
             'transferid': self._transfer_info.get('transferid'),
             'transferkey': self._transfer_info.get('transferkey')
             }
@@ -243,14 +253,14 @@ class Transfer():
         print res.json()
 
     def share(self, to=[], message=u''):
-        url = self._config.getURL('share')
+        url = getURL('share')
 
         payload = {
-            'apikey': self._config.apikey,
-            'logintoken': self._config.logintoken,
+            'apikey': self.config.apikey,
+            'logintoken': self.config.logintoken,
             'transferid': self._transfer_info.get('transferid'),
             'to': ','.join(list(to)),
-            'from': self._config.username,
+            'from': self.config.username,
             'message': message
             }
 
@@ -261,10 +271,10 @@ class Transfer():
         print res.json()
 
     def forward(self, to=[]):
-        url = self._config.getURL('forward')
+        url = getURL('forward')
 
         payload = {
-            'apikey': self._config.apikey,
+            'apikey': self.config.apikey,
             'transferid': self._transfer_info.get('transferid'),
             'transferkey': self._transfer_info.get('transferkey'),
             'to': ','.join(to)
@@ -277,12 +287,12 @@ class Transfer():
         print res.json()
 
     def getFiles(self):
-        url = self._config.getURL('get')
+        url = getURL('get')
 
         payload = {
-            'apikey': self._config.apikey,
+            'apikey': self.config.apikey,
             'transferid': self.transferid,
-            'logintoken': self._config.logintoken
+            'logintoken': self.config.logintoken
             }
 
         res = requests.post(url=url, params=payload)
@@ -302,11 +312,11 @@ class Transfer():
         return self.files
 
     def update(self, **kwargs):
-        url = self._config.getURL('update')
+        url = getURL('update')
 
         payload = {
-            'apikey': self._config.apikey,
-            'logintoken': self._config.logintoken,
+            'apikey': self.config.apikey,
+            'logintoken': self.config.logintoken,
             'transferid': self._transfer_info.get('transferid'),
             'message': kwargs.get('message'),
             'days': kwargs['days'],
@@ -322,12 +332,12 @@ class Transfer():
 
     def _initialize(self):
         payload = {
-            'apikey': self._config.apikey,
-            'logintoken': self._config.logintoken,
+            'apikey': self.config.apikey,
+            'logintoken': self.config.logintoken,
             }
         payload.update(self._transfer_info)
 
-        url = self._config.getURL('init')
+        url = getURL('init')
 
         res = requests.post(url=url, params=payload)
         if not res.ok:
