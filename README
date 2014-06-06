@@ -6,27 +6,33 @@ using requests by Kenneth Reitz.
 
 import filemail
 
+# Login to a Filemail account
+user = filemail.login(username='user@mailprovider.com',
+                      apikey='YOUR-APIKEY-FROM-FILEMAIL-GOES-HERE',
+                      password='YourSecretPassword2014')
 
-user = filemail.login('user@mailprovider.com')
+# Setup a transfer
+transfer = filemail.Transfer(user,
+                             to='lucky@recipient.com',
+                             subject='My BIG file no email can handle',
+                             message='You will not belive the speed of this download!',
+                             notify=True,
+                             confirmation=True,
+                             days=7,
+                             password='JuSt2BeSaf£')
 
-transfer = Transfer(login,
-                    to='lucky@receiver.com',
-                    subject='My first filemail transfer',
-                    message='This is awesome!',
-                    notify=True,
-                    confirmation=True,
-                    days=7,
-                    password='')
+# Add a single file to queue
+transfer.addfile('/path/to/my/BIG_file.ext')
 
-transfer.addfile('/path/to/myfile.ext')
-transfer.complete()
-transfer.get()
+# Add multiple files
+list_of_files = ['/path/to/my/BIG_file_1.ext',
+                 '/path/to/my/BIG_file_2.ext',
+                 '/path/to/my/BIG_file_3.ext']
 
-user.getReceived(age=1)
-sent = user.getSent()
-print sent
+transfer.addFiles(list_of_files)
 
-print user.getInfo()
+# Send files to recipient(s)
+transfer.send(callback=myCallbackFunction)
 
-user.save()
+# Logout
 user.logout()
