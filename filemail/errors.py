@@ -72,5 +72,5 @@ class FMSubscriptionError(FMBaseError):
     pass
 
 
-class FMConfigError(FMBaseError):
+class FMConfigError(Exception):
     pass
