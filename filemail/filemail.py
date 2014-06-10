@@ -9,7 +9,7 @@ from calendar import timegm
 
 from urls import getURL
 from config import Config
-from errors import *
+from errors import hellraiser, FMBaseError
 
 
 class User():
@@ -48,7 +48,8 @@ class User():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
+
         return res.json()
 
     def updateUserInfo(self, info):
@@ -61,7 +62,8 @@ class User():
         res = self.session.post(url=url, params=self.config.dump())
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
+
         return res.json()
 
     def getSent(self, expired=False):
@@ -78,7 +80,7 @@ class User():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
 
         transfers = list()
         for transfer in res.json()['transfers']:
@@ -107,7 +109,8 @@ class User():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
+
         return res.json()
 
     def getConfig(self):
@@ -127,7 +130,7 @@ class User():
     def validateLoginStatus(self):
         if self._logged_in:
             return True
-        raise Exception('You must be logged in')
+        raise FMBaseError('You must be logged in')
 
     def _connection(self, action):
         if action not in ['login', 'logout']:
@@ -145,7 +148,8 @@ class User():
                                 params=dict(payload))
 
         if not res.ok:
-            print res.json()['errormessage']
+            self.session.close()
+            hellraiser(res)
 
         if action == 'login':
             login_token = res.json()['logintoken']
@@ -200,8 +204,8 @@ class Transfer():
                                     stream=True)
 
             if not res.ok:
-                print res
-                return False
+                hellraiser(res)
+
         self.complete()
 
     def fileStreamer(self, fmfile, callback=None):
@@ -236,7 +240,8 @@ class Transfer():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
+
         print res.json()
 
     def delete(self):
@@ -251,7 +256,8 @@ class Transfer():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
+
         print res.json()
 
     def zip(self):
@@ -266,7 +272,8 @@ class Transfer():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
+
         print res.json()
 
     def cancel(self):
@@ -281,7 +288,8 @@ class Transfer():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
+
         print res.json()
 
     def share(self, to=[], message=u''):
@@ -299,7 +307,8 @@ class Transfer():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
+
         print res.json()
 
     def forward(self, to=[]):
@@ -315,7 +324,8 @@ class Transfer():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
+
         print res.json()
 
     def getFiles(self):
@@ -330,7 +340,7 @@ class Transfer():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
 
         self._transfer_info.update(res.json()['transfer'])
         files = self._transfer_info['files']
@@ -359,7 +369,8 @@ class Transfer():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            print res.json()['errormessage']
+            hellraiser(res)
+
         print res.json()
 
     def _initialize(self):
@@ -373,8 +384,8 @@ class Transfer():
 
         res = self.session.post(url=url, params=payload)
         if not res.ok:
-            print res.status_code
-            raise FMBaseError(res.status_code)
+            hellraiser(res)
+
         return res.json()
 
     def __repr__(self):
