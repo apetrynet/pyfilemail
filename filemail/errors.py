@@ -1,8 +1,18 @@
-# -*- coding: utf-8 -*-
+class FileMailBaseError(Exception):
+    def __str__(self):
+        return self.message
 
 
 class FMBaseError(Exception):
-    _error_codes = {
+    pass
+
+
+class FMConfigError(FMBaseError):
+    pass
+
+
+def hellraiser(response):
+    _errors = {
         # General Errors
         1001: 'UnknownError',
         1002: 'InvalidParameter',
@@ -42,35 +52,14 @@ class FMBaseError(Exception):
         5006: 'AllUserLicencesesInUse'
         }
 
-    def __init__(self, error_code, message=''):
-        self.error_code = error_code
-        self.message = message
+    reponse_dict = response.json()
+    errorcode = reponse_dict['errorcode']
+    errormessage = reponse_dict['errormessage']
 
-    def __str__(self):
-        error_name = self._error_codes[self.error_code]
-        return '{error}: {message}'.format(error=error_name,
-                                            message=self.message)
+    error = type(_errors[errorcode],
+                 (FileMailBaseError,),
+                 dict(status=errorcode,
+                      message=errormessage)
+                )
 
-
-class FMGenericError(FMBaseError):
-    pass
-
-
-class FMAuthenticationError(FMBaseError):
-    pass
-
-
-class FMTransferInitError(FMBaseError):
-    pass
-
-
-class FMTransferFileGetError(FMBaseError):
-    pass
-
-
-class FMSubscriptionError(FMBaseError):
-    pass
-
-
-class FMConfigError(Exception):
-    pass
+    raise error
