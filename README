@@ -22,7 +22,7 @@ transfer = filemail.Transfer(user,
                              password='JuSt2BeSaf£')
 
 # Add a single file to queue
-transfer.addfile('/path/to/my/BIG_file.ext')
+transfer.addFile('/path/to/my/BIG_file.ext')
 
 # Add multiple files
 list_of_files = ['/path/to/my/BIG_file_1.ext',
