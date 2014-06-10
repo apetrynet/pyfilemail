@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-import requests
+from requests import Session
 from hashlib import md5
 from uuid import uuid4
 from mimetypes import guess_type
@@ -15,6 +15,7 @@ from errors import *
 class User():
 
     def __init__(self, username, apikey=None, password=None, **kwargs):
+        self.session = Session()
         self._logged_in = False
         self.username = username
 
@@ -44,7 +45,7 @@ class User():
             'logintoken': self.config.get('logintoken')
             }
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
 
         if not res.ok:
             print res.json()['errormessage']
@@ -57,7 +58,7 @@ class User():
 
         url = getURL('user_update')
 
-        res = requests.post(url=url, params=self.config.dump())
+        res = self.session.post(url=url, params=self.config.dump())
 
         if not res.ok:
             print res.json()['errormessage']
@@ -74,12 +75,11 @@ class User():
             'getall': expired
             }
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
 
         if not res.ok:
             print res.json()['errormessage']
 
-        #return res.json()
         transfers = list()
         for transfer in res.json()['transfers']:
             transfers.append(Transfer(self, **transfer))
@@ -104,7 +104,7 @@ class User():
             'from': age
             }
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
 
         if not res.ok:
             print res.json()['errormessage']
@@ -121,6 +121,7 @@ class User():
 
     def logout(self):
         self._connection('logout')
+        self.session.close()
         return
 
     def validateLoginStatus(self):
@@ -140,10 +141,8 @@ class User():
 
         payload = map(lambda k: (k, self.config.get(k)), auth_keys[action])
 
-        res = requests.post(
-            url=url,
-            params=dict(payload)
-            )
+        res = self.session.post(url=url,
+                                params=dict(payload))
 
         if not res.ok:
             print res.json()['errormessage']
@@ -161,6 +160,7 @@ class Transfer():
         self._user = user
         self._files = []
         self.config = self._user.config
+        self.session = self._user.session
         self._transfer_info = dict(kwargs)
         self._transfer_info.update({'from': self._user.username})
 
@@ -192,11 +192,12 @@ class Transfer():
         for fmfile in self._files:
             fmfile.set('transferid', self._transfer_info['transferid'])
             fmfile.set('transferkey', self._transfer_info['transferkey'])
-            print fmfile.payload()
-            res = requests.post(url=url,
-                                params=fmfile.payload(),
-                                data=self.fileStreamer(fmfile, callback),
-                                stream=True)
+
+            res = self.session.post(url=url,
+                                    params=fmfile.payload(),
+                                    data=self.fileStreamer(fmfile,
+                                                           callback),
+                                    stream=True)
 
             if not res.ok:
                 print res
@@ -232,7 +233,7 @@ class Transfer():
             'keep_transfer_key': keep_transfer_key
             }
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
 
         if not res.ok:
             print res.json()['errormessage']
@@ -247,7 +248,7 @@ class Transfer():
             'logintoken': self.config.get('logintoken')
             }
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
 
         if not res.ok:
             print res.json()['errormessage']
@@ -262,7 +263,7 @@ class Transfer():
             'transferkey': self._transfer_info.get('transferkey')
             }
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
 
         if not res.ok:
             print res.json()['errormessage']
@@ -277,7 +278,7 @@ class Transfer():
             'transferkey': self._transfer_info.get('transferkey')
             }
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
 
         if not res.ok:
             print res.json()['errormessage']
@@ -295,7 +296,7 @@ class Transfer():
             'message': message
             }
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
 
         if not res.ok:
             print res.json()['errormessage']
@@ -311,7 +312,7 @@ class Transfer():
             'to': ','.join(to)
             }
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
 
         if not res.ok:
             print res.json()['errormessage']
@@ -326,7 +327,7 @@ class Transfer():
             'logintoken': self.config.get('logintoken')
             }
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
 
         if not res.ok:
             print res.json()['errormessage']
@@ -355,7 +356,7 @@ class Transfer():
             'notify': kwargs['notify']
             }
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
 
         if not res.ok:
             print res.json()['errormessage']
@@ -370,7 +371,7 @@ class Transfer():
 
         url = getURL('init')
 
-        res = requests.post(url=url, params=payload)
+        res = self.session.post(url=url, params=payload)
         if not res.ok:
             print res.status_code
             raise FMBaseError(res.status_code)
