@@ -2,4 +2,4 @@
 *.pyc
 ~*
 *.cfg
-filemail.cfg.bak
+*.bak
