@@ -166,7 +166,7 @@ class Transfer():
         self.config = self._user.config
         self.session = self._user.session
         self._transfer_info = dict(kwargs)
-        self._transfer_info.update({'from': self._user.username})
+        #self._transfer_info.update({'from': self._user.username})
 
         if 'status' not in self._transfer_info:
             self._transfer_info.update(self._initialize())
