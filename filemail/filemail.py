@@ -9,7 +9,7 @@ from calendar import timegm
 
 from urls import getURL
 from config import Config
-from errors import hellraiser, FMBaseError
+from errors import hellraiser, FMBaseError, FMFileError
 
 
 class User():
@@ -194,11 +194,16 @@ class Transfer():
         self.transferid = self.getTransferID()
 
     def addFile(self, filename):
-        if not os.path.isfile(filename):
-            raise FMBaseError('No such file: {}'.format(filename))
+        if isinstance(filename, FMFile):
+            fmfile = filename
+        else:
+            if not os.path.isfile(filename):
+                raise FMBaseError('No such file: {}'.format(filename))
 
-        fmfile = FMFile(filename)
+            fmfile = FMFile(filename)
+
         self._files.append(fmfile)
+
         self._complete = False
 
     def addFiles(self, files):
@@ -224,7 +229,7 @@ class Transfer():
             fmfile.set('transferkey', self.transfer_info['transferkey'])
 
             res = self.session.post(url=url,
-                                    params=fmfile.payload(),
+                                    params=fmfile.fileInfo(),
                                     data=self.fileStreamer(fmfile,
                                                            callback),
                                     stream=True)
@@ -400,16 +405,54 @@ class Transfer():
         if not res.ok:
             hellraiser(res.json())
 
-        self.transfer_info.update(res.json()['transfer'])
-        files = self.transfer_info['files']
+        self.transfer_info.update(res.json())
+        files = self.transfer_info['transfer']['files']
 
-        del(self.transfer_info['files'])
+        #del(self.transfer_info['files'])
 
         for file_data in files:
-            self.files.append(FMFile(transfer=self,
-                                     file_data=file_data))
+            self.addFile(FMFile(data=file_data))
 
-        return self.files
+        return self.files()
+
+    def renameFile(self, fmfile, filename):
+        if not isinstance(fmfile, FMFile):
+            raise FMFileError('fmfile must be an FMFile object')
+
+        url = getURL('file_rename')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken'),
+            'fileid': fmfile.get('fileid'),
+            'filename': filename
+            }
+
+        res = self.session.post(url=url, params=payload)
+        if not res.ok:
+            hellraiser(res.json())
+
+        self._complete = True
+        return res.json()
+
+    def deleteFile(self, fmfile):
+        if not isinstance(fmfile, FMFile):
+            raise FMFileError('fmfile must be an FMFile object')
+
+        url = getURL('file_delete')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken'),
+            'fileid': fmfile.get('fileid')
+            }
+
+        res = self.session.post(url=url, params=payload)
+        if not res.ok:
+            hellraiser(res.json())
+
+        self._complete = True
+        return res.json()
 
     def _initialize(self):
         payload = {
@@ -433,16 +476,17 @@ class Transfer():
 class FMFile():
 
     def __init__(self, fullpath=None, data=None):
-        self._payload = {}
+        self._file_info = {}
         self.fullpath = fullpath
         self.path = None
         self.filename = None
+        self.config = None
 
         if self.fullpath is not None:
             self.addFile(self.fullpath)
 
         if data is not None:
-            self.updatePayload(data)
+            self.updateFileInfo(data)
 
     def addFile(self, filename):
         if not os.path.isfile(filename):
@@ -450,29 +494,29 @@ class FMFile():
 
         self.path, self.filename = os.path.split(filename)
 
-        self.updatePayload(self.getFileSpecs())
+        self.updateFileInfo(self.getFileSpecs())
 
     def download(self, path):
         pass
 
     def set(self, key, value):
-        self._payload[key] = value
+        self._file_info[key] = value
 
     def get(self, key):
-        if key in self._payload:
-            return self._payload[key]
+        if key in self._file_info:
+            return self._file_info[key]
 
         return None
 
-    def updatePayload(self, data):
+    def updateFileInfo(self, data):
         if not isinstance(data, dict):
             raise Exception('A dict must be passed')
 
         for key, value in data.items():
             self.set(key, value)
 
-    def payload(self):
-        return self._payload
+    def fileInfo(self):
+        return self._file_info
 
     def getFileSpecs(self):
         fileid = str(uuid4()).replace('-', '')
@@ -493,7 +537,7 @@ class FMFile():
         return specs
 
     def __repr__(self):
-        return repr(self.payload())
+        return repr(self.fileInfo())
 
 
 class Contacts():
