@@ -11,6 +11,10 @@ class FMConfigError(FMBaseError):
     pass
 
 
+class FMFileError(FMBaseError):
+    pass
+
+
 def hellraiser(response_dict):
     _errors = {
         # General Errors
