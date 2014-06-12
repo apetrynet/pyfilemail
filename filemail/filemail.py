@@ -17,6 +17,7 @@ class User():
     def __init__(self, username, apikey=None, password=None, **kwargs):
         self.session = Session()
         self._logged_in = False
+        self._transfers = []
         self.username = username
 
         self.config = Config(self.username)
@@ -48,7 +49,7 @@ class User():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
         return res.json()
 
@@ -62,7 +63,7 @@ class User():
         res = self.session.post(url=url, params=self.config.dump())
 
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
         return res.json()
 
@@ -80,7 +81,7 @@ class User():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
         transfers = list()
         for transfer in res.json()['transfers']:
@@ -109,7 +110,7 @@ class User():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
         return res.json()
 
@@ -123,6 +124,7 @@ class User():
         self._connection('login')
 
     def logout(self):
+        self.checkAllTransfers()
         self._connection('logout')
         self.session.close()
         return
@@ -131,6 +133,22 @@ class User():
         if self._logged_in:
             return True
         raise FMBaseError('You must be logged in')
+
+    def addTransfer(self, transfer):
+        if transfer not in self._transfers:
+            self._transfers.append(transfer)
+
+    def transfers(self):
+        return self._transfers
+
+    def checkAllTransfers(self):
+        for transfer in self.transfers():
+            if not transfer.isComplete():
+                error = {
+                    'errorcode': 4003,
+                    'errormessage': 'You must complete transfer before logout.'
+                    }
+                hellraiser(error)
 
     def _connection(self, action):
         if action not in ['login', 'logout']:
@@ -149,7 +167,7 @@ class User():
 
         if not res.ok:
             self.session.close()
-            hellraiser(res)
+            hellraiser(res.json())
 
         if action == 'login':
             login_token = res.json()['logintoken']
@@ -162,19 +180,18 @@ class Transfer():
 
     def __init__(self, user, **kwargs):
         self._user = user
+        self._user.addTransfer(self)
         self._files = []
+        self._complete = True
         self.config = self._user.config
         self.session = self._user.session
-        self._transfer_info = dict(kwargs)
-        #self._transfer_info.update({'from': self._user.username})
+        self.transfer_info = dict(kwargs)
+        self.transfer_info.update({'from': self._user.username})
 
-        if 'status' not in self._transfer_info:
-            self._transfer_info.update(self._initialize())
+        if 'status' not in self.transfer_info:
+            self.transfer_info.update(self._initialize())
 
-        if 'id' in self._transfer_info:
-            self.transferid = self._transfer_info.get('id')
-        else:
-            self.transferid = self._transfer_info.get('transferid')
+        self.transferid = self.getTransferID()
 
     def addFile(self, filename):
         if not os.path.isfile(filename):
@@ -182,6 +199,7 @@ class Transfer():
 
         fmfile = FMFile(filename)
         self._files.append(fmfile)
+        self._complete = False
 
     def addFiles(self, files):
         for filename in files:
@@ -190,12 +208,20 @@ class Transfer():
     def files(self):
         return self._files
 
-    def send(self, callback=None):
-        url = self._transfer_info.get('transferurl')
+    def getTransferID(self):
+        if 'transferid' in self.transfer_info:
+            transferid = self.transfer_info.get('transferid')
+        else:
+            transferid = self.transfer_info.get('id')
+
+        return transferid
+
+    def send(self, callback=None, auto_complete=True):
+        url = self.transfer_info.get('transferurl')
 
         for fmfile in self._files:
-            fmfile.set('transferid', self._transfer_info['transferid'])
-            fmfile.set('transferkey', self._transfer_info['transferkey'])
+            fmfile.set('transferid', self.transferid)
+            fmfile.set('transferkey', self.transfer_info['transferkey'])
 
             res = self.session.post(url=url,
                                     params=fmfile.payload(),
@@ -204,9 +230,9 @@ class Transfer():
                                     stream=True)
 
             if not res.ok:
-                hellraiser(res)
-
-        self.complete()
+                hellraiser(res.json())
+        if auto_complete:
+            self.complete(keep_transfer_key=True)
 
     def fileStreamer(self, fmfile, callback=None):
         chunksize = 65536
@@ -232,31 +258,57 @@ class Transfer():
 
         payload = {
             'apikey': self.config.get('apikey'),
-            'transferid': self._transfer_info.get('transferid'),
-            'transferkey': self._transfer_info.get('transferkey'),
+            'transferid': self.transferid,
+            'transferkey': self.transfer_info.get('transferkey'),
             'keep_transfer_key': keep_transfer_key
             }
 
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
+        self._complete = True
         print res.json()
+
+    def isComplete(self):
+        return self._complete
+
+    def update(self, **kwargs):
+        '''Update an completed transfer'''
+
+        url = getURL('update')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken'),
+            'transferid': self.transferid,
+            'message': kwargs.get('message'),
+            'days': kwargs.get('days'),
+            'downloads': kwargs.get('downloads'),
+            'notify': kwargs.get('notify')
+            }
+
+        res = self.session.post(url=url, params=payload)
+
+        if not res.ok:
+            hellraiser(res.json())
+
+        self.transfer_info.update(res.json())
 
     def delete(self):
         url = getURL('delete')
 
         payload = {
             'apikey': self.config.get('apikey'),
-            'transferid': self._transfer_info.get('transferid'),
+            'transferid': self.transfer_info.get('transferid'),
             'logintoken': self.config.get('logintoken')
             }
 
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
         print res.json()
 
@@ -264,15 +316,15 @@ class Transfer():
         url = getURL('zip')
 
         payload = {
-            'apikey': self.config.apikey,
-            'transferid': self._transfer_info.get('transferid'),
-            'transferkey': self._transfer_info.get('transferkey')
+            'apikey': self.config.get('apikey'),
+            'transferid': self.transferid,
+            'transferkey': self.transfer_info.get('transferkey')
             }
 
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
         print res.json()
 
@@ -281,50 +333,56 @@ class Transfer():
 
         payload = {
             'apikey': self.config.get('apikey'),
-            'transferid': self._transfer_info.get('transferid'),
-            'transferkey': self._transfer_info.get('transferkey')
+            'transferid': self.transferid,
+            'transferkey': self.transfer_info.get('transferkey')
             }
 
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
+        self._complete = True
         print res.json()
 
-    def share(self, to=[], message=u''):
+    def share(self, **kwargs):
         url = getURL('share')
 
         payload = {
             'apikey': self.config.get('apikey'),
             'logintoken': self.config.get('logintoken'),
-            'transferid': self._transfer_info.get('transferid'),
-            'to': ','.join(list(to)),
+            'transferid': self.transferid,
+            'to': ','.join(list(kwargs.get('to'))),
             'from': self.config.get('username'),
-            'message': message
+            'message': kwargs.get('message')
             }
 
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
         print res.json()
 
-    def forward(self, to=[]):
+    def forward(self, to=None):
+        if isinstance(to, (str, unicode)):
+            to = to.split(',')
+        elif isinstance(to, list):
+            to = ','.join(to)
+
         url = getURL('forward')
 
         payload = {
             'apikey': self.config.get('apikey'),
-            'transferid': self._transfer_info.get('transferid'),
-            'transferkey': self._transfer_info.get('transferkey'),
-            'to': ','.join(to)
+            'transferid': self.transferid,
+            'transferkey': self.transfer_info.get('transferkey'),
+            'to': to
             }
 
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
         print res.json()
 
@@ -340,12 +398,12 @@ class Transfer():
         res = self.session.post(url=url, params=payload)
 
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
-        self._transfer_info.update(res.json()['transfer'])
-        files = self._transfer_info['files']
+        self.transfer_info.update(res.json()['transfer'])
+        files = self.transfer_info['files']
 
-        del(self._transfer_info['files'])
+        del(self.transfer_info['files'])
 
         for file_data in files:
             self.files.append(FMFile(transfer=self,
@@ -353,43 +411,23 @@ class Transfer():
 
         return self.files
 
-    def update(self, **kwargs):
-        url = getURL('update')
-
-        payload = {
-            'apikey': self.config.get('apikey'),
-            'logintoken': self.config.get('logintoken'),
-            'transferid': self._transfer_info.get('transferid'),
-            'message': kwargs.get('message'),
-            'days': kwargs['days'],
-            'downloads': kwargs['downloads'],
-            'notify': kwargs['notify']
-            }
-
-        res = self.session.post(url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res)
-
-        print res.json()
-
     def _initialize(self):
         payload = {
             'apikey': self.config.get('apikey'),
             'logintoken': self.config.get('logintoken'),
             }
-        payload.update(self._transfer_info)
+        payload.update(self.transfer_info)
 
         url = getURL('init')
 
         res = self.session.post(url=url, params=payload)
         if not res.ok:
-            hellraiser(res)
+            hellraiser(res.json())
 
         return res.json()
 
     def __repr__(self):
-        return repr(self._transfer_info)
+        return repr(self.transfer_info)
 
 
 class FMFile():
