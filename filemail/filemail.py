@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-from requests import Session
+#from requests import Session
 from hashlib import md5
 from uuid import uuid4
 from mimetypes import guess_type
@@ -9,13 +9,13 @@ from calendar import timegm
 
 from urls import getURL
 from config import Config
+from connection import FMConnection
 from errors import hellraiser, FMBaseError, FMFileError
 
 
 class User():
 
     def __init__(self, username, apikey=None, password=None, **kwargs):
-        self.session = Session()
         self._logged_in = False
         self._transfers = []
         self.username = username
@@ -35,6 +35,8 @@ class User():
                 config_file = None
 
             self.config.load(config_file)
+
+        self.session = FMConnection(self)
 
     def getInfo(self):
         self.validateLoginStatus()
@@ -121,13 +123,14 @@ class User():
         self.config.save(config_path)
 
     def login(self):
-        self._connection('login')
+        state = self.session.login()
+        self._setLoginState(state)
 
     def logout(self):
         self.checkAllTransfers()
-        self._connection('logout')
-        self.session.close()
-        return
+
+        state = self.session.logout()
+        self._setLoginState(state)
 
     def validateLoginStatus(self):
         if self._logged_in:
@@ -150,30 +153,8 @@ class User():
                     }
                 hellraiser(error)
 
-    def _connection(self, action):
-        if action not in ['login', 'logout']:
-            raise FMBaseError('{}, is not a vaid action'.format(action))
-
-        url = getURL(action)
-        auth_keys = {
-            'login': ['apikey', 'username', 'password', 'source', 'logintoken'],
-            'logout': ['apikey', 'logintoken']
-            }
-
-        payload = map(lambda k: (k, self.config.get(k)), auth_keys[action])
-
-        res = self.session.post(url=url,
-                                params=dict(payload))
-
-        if not res.ok:
-            self.session.close()
-            hellraiser(res.json())
-
-        if action == 'login':
-            login_token = res.json()['logintoken']
-            self.config.set('logintoken', login_token)
-
-        self._logged_in = not self._logged_in
+    def _setLoginState(self, state):
+        self._logged_in = state
 
 
 class Transfer():
@@ -234,8 +215,11 @@ class Transfer():
                                                            callback),
                                     stream=True)
 
+            res.text
+
             if not res.ok:
                 hellraiser(res.json())
+
         if auto_complete:
             self.complete(keep_transfer_key=True)
 
