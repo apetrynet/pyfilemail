@@ -95,9 +95,10 @@ class Config():
         return config
 
     def _locateConfig(self):
+        here = os.path.dirname(__file__)
         locations = [
             os.getenv('FILEMAIL_CONFIG_PATH', ''),
-            os.path.join(os.path.dirname(__file__), 'filemail.cfg'),
+            os.path.join(os.path.dirname(here), 'filemail.cfg'),
             os.path.join(os.path.expanduser('~'), 'filemail.cfg'),
             os.path.join(os.path.expanduser('~'), '.netrc')
             ]
