@@ -14,7 +14,7 @@ with open('README') as f:
 
 setup(
     name='filemail',
-    version=filemail.__verison__,
+    version=filemail.__version__,
     description='Python API for file transfers with www.filemail.com',
     long_description=long_description,
     author='Daniel Flehner Heen',
