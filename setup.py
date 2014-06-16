@@ -3,7 +3,7 @@ from setuptools import setup
 
 import filemail
 
-packages = []
+packages = ['filemail']
 
 requires = [
     'requests'
