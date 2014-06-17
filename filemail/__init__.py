@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-from filemail import User, Transfer, Config
+from users import User
+from transfer import Transfer
+from config import Config
+from fmfile import FMFile
 
 
 __title__ = 'filemail'
