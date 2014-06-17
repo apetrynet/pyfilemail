@@ -155,10 +155,10 @@ class User():
 class Contacts():
 
     def __init__(self):
-        pass
+        raise NotImplemented
 
 
 class Company():
 
     def __init__(self):
-        pass
+        raise NotImplemented
