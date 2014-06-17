@@ -1,8 +1,8 @@
 filemail
 By: Daniel Flehner Heen
 
-Pyhton wrapper for www.filemail.com API
-using requests by Kenneth Reitz.
+Pyhton API for sending files with www.filemail.com
+Uses requests by Kenneth Reitz.
 
 import filemail
 
