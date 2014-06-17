@@ -6,7 +6,7 @@ from fmfile import FMFile
 
 
 __title__ = 'filemail'
-__version__ = '0.1.0'
+__version__ = '0.0.9'
 __author__ = 'Daniel Flehner Heen'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2014 Daniel Flehner Heen'
