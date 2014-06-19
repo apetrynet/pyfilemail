@@ -1,3 +1,10 @@
+"""
+filemail.users
+~~~~~~~~~~~~~~
+
+Contains :User:, :Contacts: and :Company: classes
+"""
+
 from calendar import timegm
 from datetime import datetime, timedelta
 
@@ -9,8 +16,16 @@ from errors import hellraiser, FMBaseError
 
 
 class User():
+    """This is the entry point to filemail. You need a valid user to login.
+
+    :param username: (optional) String with registered email address
+    :param apikey: (optional) String api key from filemail.com
+    :param password: (optional) String users filemail password
+
+    """
 
     def __init__(self, username, apikey=None, password=None, **kwargs):
+
         self._logged_in = False
         self._transfers = []
         self.username = username
@@ -34,6 +49,11 @@ class User():
         self.session = FMConnection(self)
 
     def getInfo(self):
+        """:returns: :class:`Config <Config>` object containig user information
+        and default settings.
+        """
+
+        #: Fail if user not logged in
         self.validateLoginStatus()
 
         url = getURL('user_get')
@@ -48,9 +68,13 @@ class User():
         if not res.ok:
             hellraiser(res.json())
 
-        return res.json()
+        return Config(self.username, **res.json()['user'])
 
     def updateUserInfo(self, info):
+        """Update user information and settings.
+
+        :param info: Dictionary containing information"""
+
         self.validateLoginStatus()
 
         self.config.update(info)
