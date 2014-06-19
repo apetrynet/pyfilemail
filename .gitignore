@@ -3,3 +3,5 @@
 ~*
 *.cfg
 *.bak
+docs/build/
+*.egg-info/
