@@ -18,10 +18,12 @@ from errors import hellraiser, FMBaseError
 class User():
     """This is the entry point to filemail. You need a valid user to login.
 
-    :param username: (optional) String with registered email address
+    :param username: String with registered filemail username (email address)
     :param apikey: (optional) String api key from filemail.com
     :param password: (optional) String users filemail password
 
+    :class:`User <User>` object needs to be passed to :class:`Transfer` for
+    successful transfers.
     """
 
     def __init__(self, username, apikey=None, password=None, **kwargs):
