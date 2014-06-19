@@ -13,6 +13,17 @@ __copyright__ = 'Copyright 2014 Daniel Flehner Heen'
 
 
 def login(username, apikey=None, password=None, **kwargs):
+    """Convenience function to login to filemail.
+
+    :param username: String with filemail username (usually email address)
+    :param apikey: String (optional) with key provided by filemail support
+    :param password: String (optional) with valid password
+    :returns: :class:`User <User>` object
+
+    `apikey` and `password` are only optional if you've stored login information
+    in a :ref:`configfile`
+    """
+
     user = User(username, apikey, password, **kwargs)
     user.login()
     return user
