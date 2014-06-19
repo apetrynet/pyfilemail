@@ -6,8 +6,9 @@ from errors import FMConfigError
 
 
 class Config():
+    """Config handles creating, loading or storing :class: `User` settings."""
 
-    def __init__(self, username):
+    def __init__(self, username, **kwargs):
         self._config = {}
 
         self.required_keys = [
@@ -18,6 +19,7 @@ class Config():
 
         self.optional_keys = [
             'country',
+            'created',
             'defaultconfirmation',
             'defaultdays',
             'defaultdownloads',
@@ -25,14 +27,22 @@ class Config():
             'defaultsubject',
             'email',
             'logintoken',
+            'maxdays',
+            'maxdownloads',
+            'maxtransfersize',
+            'membershipname',
             'name',
             'newsletter',
             'signature',
-            'source'
+            'source',
+            'subscription'
             ]
 
         self.valid_keys = self.required_keys + self.optional_keys
         self.set('username', username)
+
+        if kwargs:
+            self.update(kwargs)
 
     def set(self, key, value):
         if self.validKey(key):
@@ -99,8 +109,7 @@ class Config():
         locations = [
             os.getenv('FILEMAIL_CONFIG_PATH', ''),
             os.path.join(os.path.dirname(here), 'filemail.cfg'),
-            os.path.join(os.path.expanduser('~'), 'filemail.cfg'),
-            os.path.join(os.path.expanduser('~'), '.netrc')
+            os.path.join(os.path.expanduser('~'), 'filemail.cfg')
             ]
 
         for path in locations:
