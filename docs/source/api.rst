@@ -17,3 +17,7 @@ Filemail Pyhton API
     :members:
     :undoc-members:
 
+..  autoclass:: FMFile
+    :members:
+    :undoc-members:
+
