@@ -16,14 +16,13 @@ from errors import hellraiser, FMBaseError
 
 
 class User():
-    """This is the entry point to filemail. You need a valid user to login.
+    """
+    This is the entry point to filemail. You need a valid user to login.
 
-    :param username: String with registered filemail username (email address)
-    :param apikey: (optional) String api key from filemail.com
-    :param password: (optional) String users filemail password
-
-    :class:`User <User>` object needs to be passed to :class:`Transfer` for
-    successful transfers.
+    :param username: `String` with registered filemail username
+    :param apikey: (optional) `String` api key from filemail.com
+    :param password: (optional) `String` users filemail password
+    :param \*\*kwargs: Additional `key=value` pairs with user setings
     """
 
     def __init__(self, username, apikey=None, password=None, **kwargs):
@@ -51,8 +50,9 @@ class User():
         self.session = FMConnection(self)
 
     def getInfo(self):
-        """:returns: :class:`Config <Config>` object containig user information
-        and default settings.
+        """
+        :returns: :class:`Config` object containig user
+            information and default settings.
         """
 
         #: Fail if user not logged in
@@ -73,9 +73,15 @@ class User():
         return Config(self.username, **res.json()['user'])
 
     def updateUserInfo(self, info=None):
-        """Update user information and settings.
+        """
+        Update user information and settings.
 
-        :param info: Dictionary containing information"""
+        :param info: (optional) `Dictionary` or :class:`Config` object
+            containing information.
+
+        If no info is passed the current config is sent.
+
+        """
 
         self.validateLoginStatus()
 
@@ -92,9 +98,14 @@ class User():
         if not res.ok:
             hellraiser(res.json())
 
-        return res.json()
-
     def getSent(self, expired=False):
+        """
+        Retreve information on previously sent transfers.
+
+        :param expired: `Boolean` setting whether or not to return expired
+            transfers.
+        :returns: `List` with :class:`Transfer` objects
+        """
         self.validateLoginStatus()
 
         url = getURL('sent_get')
@@ -116,6 +127,20 @@ class User():
         return transfers
 
     def getReceived(self, age=None, for_all=True):
+        """
+        This is used to retrieve a list of transfers sent to you or your company
+        from other people.
+
+        :param age: `Integer` between 1 and 90 days.
+        :param for_all: `Boolean` if ``True`` will return received files for
+            all users in the same business. (Available for business account
+            members only).
+        :returns: List of :class:`Transfer` objects.
+
+        Retrieving files is only available for users with an
+        `business account <http://www.filemail.com>`_.
+
+        """
         self.validateLoginStatus()
 
         url = getURL('received_get')
@@ -139,37 +164,81 @@ class User():
         if not res.ok:
             hellraiser(res.json())
 
-        return res.json()
+        transfers = list()
+        for transfer in res.json()['transfers']:
+            transfers.append(Transfer(self, **transfer))
+        return transfers
 
     def getConfig(self):
+        """
+        :returns: The users current :class:`Config` object.
+        """
+
         return self.config
 
     def save(self, config_path=None):
+        """
+        Saves the current config/settings to `config_path`.
+
+        :param config_path: (optional) `String` with fullpath to
+            ``filemail.cfg``.
+
+        If `config_path` is ``None`` it defaults to ``${HOME}/filemail.cfg``.
+        """
+
         self.config.save(config_path)
 
     def login(self):
+        """
+        Login to filemail as the current user.
+        """
+
         state = self.session.login()
         self._setLoginState(state)
 
     def logout(self):
+        """
+        Logout of filemail and closing the session.
+        """
+
         self.checkAllTransfers()
 
         state = self.session.logout()
         self._setLoginState(state)
 
     def validateLoginStatus(self):
+        """
+        Check if user is propperly loged in.
+        """
+
         if self._logged_in:
             return True
+
         raise FMBaseError('You must be logged in')
 
     def addTransfer(self, transfer):
+        """
+        Add a :class:`Transfer` to an internal list of transfers associated
+        with the users current session.
+
+        :param transfer: :class:`Transfer` object
+        """
+
         if transfer not in self._transfers:
             self._transfers.append(transfer)
 
     def transfers(self):
+        """
+        :returns: `List` of :class:`Transfer` objects.
+        """
+
         return self._transfers
 
     def checkAllTransfers(self):
+        """
+        Check if all transfers are completed.
+        """
+
         for transfer in self.transfers():
             if not transfer.isComplete():
                 error = {
@@ -179,6 +248,10 @@ class User():
                 hellraiser(error)
 
     def _setLoginState(self, state):
+        """
+        Set login state to ``True`` or ``False``
+        """
+
         self._logged_in = state
 
 
