@@ -10,6 +10,7 @@ class Config():
 
     def __init__(self, username, **kwargs):
         self._config = {}
+        self.config_file = None
 
         self.required_keys = [
             'apikey',
@@ -75,6 +76,12 @@ class Config():
         return key in self.valid_keys
 
     def save(self, config_file=None):
+        if config_file is None:
+            config_file = self._locateConfig()
+
+        if config_file is None:
+            #raise FMConfigError('No config file found')
+            config_file = os.path.join(os.path.expanduser('~'), 'filemail.cfg')
 
         config = ConfigParser()
         config.add_section(self._username)
@@ -83,12 +90,16 @@ class Config():
 
         config.write(open(config_file, 'w'))
 
+        self.config_file = config_file
+
     def load(self, config_file):
         if config_file is None:
             config_file = self._locateConfig()
 
         if config_file is None:
             raise FMConfigError('No config file found')
+
+        self.config_file = config_file
 
         config = self._read(config_file)
         username = self.get('username')
@@ -105,6 +116,9 @@ class Config():
         return config
 
     def _locateConfig(self):
+        if self.config_file is not None:
+            return self.config_file
+
         here = os.path.dirname(__file__)
         locations = [
             os.getenv('FILEMAIL_CONFIG_PATH', ''),
@@ -115,6 +129,7 @@ class Config():
         for path in locations:
             if os.path.isfile(path):
                 if os.path.basename(path) == 'filemail.cfg':
+                    self.config_file = path
                     return path
 
         return None
