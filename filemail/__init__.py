@@ -18,10 +18,11 @@ def login(username, apikey=None, password=None, **kwargs):
     :param username: String with filemail username (usually email address)
     :param apikey: String (optional) with key provided by filemail support
     :param password: String (optional) with valid password
+    :param \*\*kwargs: Additional `key=value` pairs with user setings
     :returns: :class:`User <User>` object
 
     `apikey` and `password` are only optional if you've stored login information
-    in a :ref:`configfile`
+    in a :ref:`configfile <example-configfile>`
     """
 
     user = User(username, apikey, password, **kwargs)
