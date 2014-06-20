@@ -72,14 +72,18 @@ class User():
 
         return Config(self.username, **res.json()['user'])
 
-    def updateUserInfo(self, info):
+    def updateUserInfo(self, info=None):
         """Update user information and settings.
 
         :param info: Dictionary containing information"""
 
         self.validateLoginStatus()
 
-        self.config.update(info)
+        if info is not None:
+            if isinstance(info, Config):
+                info = info.dump()
+
+            self.config.update(info)
 
         url = getURL('user_update')
 
