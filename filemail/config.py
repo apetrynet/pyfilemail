@@ -121,7 +121,7 @@ class Config():
 
         here = os.path.dirname(__file__)
         locations = [
-            os.getenv('FILEMAIL_CONFIG_PATH', ''),
+            os.getenv('FILEMAIL_CONFIG_FILE', ''),
             os.path.join(os.path.dirname(here), 'filemail.cfg'),
             os.path.join(os.path.expanduser('~'), 'filemail.cfg')
             ]
