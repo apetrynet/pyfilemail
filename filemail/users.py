@@ -32,20 +32,15 @@ class User():
         self.username = username
 
         self.config = Config(self.username)
+        self.config.load()
+
         if apikey and password:
             self.config.set('apikey', apikey)
             self.config.set('password', password)
+
+        if kwargs:
             for key, value in kwargs.items():
                 self.config.set(key, value)
-
-        else:
-            if 'config_file' in kwargs:
-                config_file = kwargs['config_file']
-
-            else:
-                config_file = None
-
-            self.config.load(config_file)
 
         self.session = FMConnection(self)
 
