@@ -6,7 +6,17 @@ from errors import FMConfigError
 
 
 class Config():
-    """Config handles creating, loading or storing :class: `User` settings."""
+    """
+    Config handles creating, loading or storing settings for ``username``.
+
+    Config class also stores information about the logged in session.
+
+    :param username: `String` with valid filemail.com username
+    :param \*\*kwargs: (optional) Keywords concerning user and connection
+
+    If no configfile containing ``apikey`` and ``password`` exists for the
+    username passed, you need to provide them as keywords
+    """
 
     def __init__(self, username, **kwargs):
         self._config = {}
@@ -45,7 +55,23 @@ class Config():
         if kwargs:
             self.update(kwargs)
 
+        self.checkForConfigfile()
+
+    def checkForConfigfile(self):
+        """Attempt to locate and set configfile path"""
+
+        self.config_file = self._locateConfig()
+
     def set(self, key, value):
+        """
+        Add or update keys in the config
+
+        :param key: `String` of valid key name
+        :param value: `String` or `Int` with value for key
+
+        ``set()`` validates the key before adding to the config.
+        """
+
         if self.validKey(key):
             if key in self.required_keys:
                 if value is None:
@@ -56,27 +82,55 @@ class Config():
             raise AttributeError('Non valid config key, "%s" passed' % key)
 
     def get(self, key):
+        """
+        Get value of given `key` in config
+
+        :param key: `String` with key name
+        :returns: `value` if key is valid and in config or `None` if not
+        """
+
         if key in self._config:
             return self._config[key]
         return None
 
-    def update(self, config=None):
-        if config is None:
-            return
+    def update(self, config):
+        """
+        Bulk update the config with a dictionary
+
+        :param config: `Dictionary` with config options
+        """
+
         if not isinstance(config, dict):
             raise Exception('You need to pass a dict')
 
         for key, value in config.items():
             self.set(key, value)
 
-    def dump(self):
+    def config(self):
+        """:returns: `Dictionary` containing the current config"""
+
         return self._config
 
     def validKey(self, key):
+        """
+        Validates key for the config
+
+        :param key: `String` with key to check against valid keys
+        :returns: `Boolean`
+        """
+
         return key in self.valid_keys
 
-    def save(self, config_file=None):
-        if config_file is None:
+    def save(self):
+        """
+        Save the current config to disk
+
+        If noe configfile is stored in the class it will attempt to locate
+        ``filemail.cfg`` in known locations or create one in the users
+        ``${HOME}`` directory.
+        """
+
+        if self.config_file is None:
             config_file = self._locateConfig()
 
         if config_file is None:
@@ -92,16 +146,17 @@ class Config():
 
         self.config_file = config_file
 
-    def load(self, config_file):
-        if config_file is None:
-            config_file = self._locateConfig()
+    def load(self):
+        """Load and set config from file"""
 
-        if config_file is None:
-            raise FMConfigError('No config file found')
+        if self.config_file is None:
+            self.checkForConfigfile()
 
-        self.config_file = config_file
+        if self.config_file is None:
+            #raise FMConfigError('No config file found')
+            return None
 
-        config = self._read(config_file)
+        config = self._read(self.config_file)
         username = self.get('username')
 
         if username in config.sections():
@@ -110,12 +165,34 @@ class Config():
             for key, value in env.items():
                 self.set(key, value)
 
+    def _checkFilePermissions(self):
+        pass
+
     def _read(self, config_file):
+        """
+        Open and parse the stored configfile
+
+        :param config_file: `String` with full path to configfile
+        :returns: `Dictionary` with config
+        """
+
         config = ConfigParser()
         config.readfp(open(config_file))
+
         return config
 
     def _locateConfig(self):
+        """
+        Locate configfile in prioritized order:
+
+        :returns: full path to configfile
+
+        * Environment variable ``FILEMAIL_CONFIG_PATH``
+        * Current directory
+        * ``${HOME}`` directory
+
+        """
+
         if self.config_file is not None:
             return self.config_file
 
