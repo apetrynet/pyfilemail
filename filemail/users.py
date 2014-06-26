@@ -181,7 +181,7 @@ class User():
         If `config_path` is ``None`` it defaults to ``${HOME}/filemail.cfg``.
         """
 
-        self.config.save(config_path)
+        self.config.save()
 
     def login(self):
         """
