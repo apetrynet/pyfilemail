@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
+import stat
+
 from ConfigParser import ConfigParser
 
 from errors import FMConfigError
@@ -131,20 +133,21 @@ class Config():
         """
 
         if self.config_file is None:
-            config_file = self._locateConfig()
+            self.config_file = self._locateConfig()
 
-        if config_file is None:
+        if self.config_file is None:
             #raise FMConfigError('No config file found')
-            config_file = os.path.join(os.path.expanduser('~'), 'filemail.cfg')
+            home = os.path.expanduser('~')
+            self.config_file = os.path.join(home, 'filemail.cfg')
 
         config = ConfigParser()
-        config.add_section(self._username)
-        for key, value in self._config.items():
-            config.set(self._username, key, value)
+        config.add_section(self.get('username'))
+        for key, value in self.config().items():
+            config.set(self.get('username'), key, value)
 
-        config.write(open(config_file, 'w'))
-
-        self.config_file = config_file
+        RW = os.O_WRONLY | os.O_CREAT
+        with os.fdopen(os.open(self.config_file, RW, 0600), 'w') as f:
+            config.write(f)
 
     def load(self):
         """Load and set config from file"""
@@ -165,8 +168,16 @@ class Config():
             for key, value in env.items():
                 self.set(key, value)
 
-    def _checkFilePermissions(self):
-        pass
+    def _checkFilePermissions(self, path):
+        """
+        Warn if permissions on configfile are vulnerable for others the owner.
+
+        :param path: `String` to configfile
+        :returns: `Boolean`
+        """
+
+        RWONLY = stat.S_IRUSR | stat.S_IWUSR
+        return stat.S_IMODE(os.stat(path).st_mode) == RWONLY
 
     def _read(self, config_file):
         """
@@ -175,6 +186,13 @@ class Config():
         :param config_file: `String` with full path to configfile
         :returns: `Dictionary` with config
         """
+
+        if not self._checkFilePermissions(config_file):
+            msg = 'WARNING! Permissions on {file} are not safe!\n'
+            msg += 'You should set them to read/write for owner to prevent '
+            msg += 'prying eyes.'
+
+            print msg.format(file=config_file)
 
         config = ConfigParser()
         config.readfp(open(config_file))
