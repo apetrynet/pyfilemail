@@ -6,6 +6,20 @@ from errors import hellraiser, FMBaseError, FMFileError
 
 
 class Transfer():
+    """
+    The Transfer object is the gateway to sending and recieving files through
+    filemail.com.
+
+    :param user: :ref:`User` object with valid login status
+    :param \*\*kwargs: (optional) additional arguments for the transfer like:
+        `to` (recipient), `subject`, `message`, `signature`, `notification`
+        and so on.
+        See the `filemail API <http://www.filemail.com/apidoc/Transfer.aspx>`_
+        for more info.
+
+    Recipient(s) and other info can be updated with the :ref:`update` method at
+    a later stage.
+    """
 
     def __init__(self, user, **kwargs):
         self._user = user
