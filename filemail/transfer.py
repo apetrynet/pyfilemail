@@ -10,14 +10,20 @@ class Transfer():
     The Transfer object is the gateway to sending and recieving files through
     filemail.com.
 
-    :param user: :ref:`User` object with valid login status
-    :param \*\*kwargs: (optional) additional arguments for the transfer like:
-        `to` (recipient), `subject`, `message`, `signature`, `notification`
-        and so on.
-        See the `filemail API <http://www.filemail.com/apidoc/Transfer.aspx>`_
-        for more info.
+    :param user: `User` object with valid login status
+    :param \*\*kwargs: (optional) additional arguments for the transfer.
 
-    Recipient(s) and other info can be updated with the :ref:`update` method at
+    `\*\*kwargs` may contain:
+        * `to` (email/username)
+        * `subject`
+        * `message`
+        * `signature`
+        * `notify` (`Boolean` notify when recipients download files)
+        * `confirmation` (`Boolean` confirm when finished uploading)
+        * `days` (`Int` days available for download)
+        * `password` (for recipients to enter for download access)
+
+    Recipient(s) and other info can be updated with the ``update()`` method at
     a later stage.
     """
 
