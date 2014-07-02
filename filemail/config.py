@@ -16,8 +16,30 @@ class Config():
     :param username: `String` with valid filemail.com username
     :param \*\*kwargs: (optional) Keywords concerning user and connection
 
-    If no configfile containing ``apikey`` and ``password`` exists for the
-    username passed, you need to provide them as keywords
+    Valid `\*\*kwargs` are:
+        * `apikey` (required if not in a config file)
+        * `password` (required if not in a config file)
+        * `username` (required if not in a config file)
+
+        * `country` (two character country code e.g: NO US GB)
+        * `created`
+        * `defaultconfirmation`
+        * `defaultdays`
+        * `defaultdownloads`
+        * `defaultnotify`
+        * `defaultsubject`
+        * `email`
+        * `logintoken`
+        * `maxdays`
+        * `maxdownloads`
+        * `maxtransfersize`
+        * `membershipname`
+        * `name`
+        * `newsletter`
+        * `signature`
+        * `source`
+        * `subscription`
+
     """
 
     def __init__(self, username, **kwargs):
