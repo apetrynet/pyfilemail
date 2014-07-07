@@ -4,8 +4,8 @@ Welcome to filemail's documentation!
 (Unofficial) Pyhton API for sending and recieving files with
 `<www.filemail.com>`_ written by: Daniel Flehner Heen.
 
-filemail Pyhton API is built around filemail's official
-`API <http://www.filemail.com/apidoc/ApiDocumentation.aspx>`_
+filemail Pyhton API is built around filemail's
+`official API <http://www.filemail.com/apidoc/ApiDocumentation.aspx>`_
 using `requests <https://github.com/kennethreitz/requests>`_ by Kenneth Reitz.
 
 
