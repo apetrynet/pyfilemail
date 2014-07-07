@@ -23,7 +23,7 @@ class Transfer():
         * `days` (`Int` days available for download)
         * `password` (for recipients to enter for download access)
 
-    Recipient(s) and other info can be updated with the ``update()`` method at
+    Recipient(s) and other info can be updated with the :func:`update` method at
     a later stage.
     """
 
@@ -43,6 +43,12 @@ class Transfer():
         self.transferid = self.getTransferID()
 
     def addFile(self, filename):
+        """
+        Add a single file to Transfer.
+
+        :param filename: `String` with full path to file
+        """
+
         if isinstance(filename, FMFile):
             fmfile = filename
         else:
@@ -56,13 +62,27 @@ class Transfer():
         self._complete = False
 
     def addFiles(self, files):
+        """
+        Add multiple files.
+
+        :param files: `List` of paths to files
+        """
+
         for filename in files:
             self.addFile(filename)
 
     def files(self):
+        """:returns: `List` of files related to Transfer"""
+
         return self._files
 
     def getTransferID(self):
+        """
+        Get the transfer id for the current Transfer.
+
+        :returns: `String` with transfer id
+        """
+
         if 'transferid' in self.transfer_info:
             transferid = self.transfer_info.get('transferid')
         else:
@@ -71,6 +91,19 @@ class Transfer():
         return transferid
 
     def send(self, callback=None, auto_complete=True):
+        """
+        Begin uploading file(s) and sending email(s).
+
+        :param callback: pass name of callback function that will receive a
+            percentage of file transfered
+        :param auto_complete: `Boolean` settinng wheter or not to auto complete
+            transfer after upload.
+
+        If `auto_complete` is set to ``False`` you will have to call the
+        :func:`complete` function
+        at a later stage.
+        """
+
         url = self.transfer_info.get('transferurl')
 
         for fmfile in self._files:
@@ -79,7 +112,7 @@ class Transfer():
 
             res = self.session.post(url=url,
                                     params=fmfile.fileInfo(),
-                                    data=self.fileStreamer(fmfile,
+                                    data=self._fileStreamer(fmfile,
                                                            callback),
                                     stream=True)
 
@@ -91,7 +124,14 @@ class Transfer():
         if auto_complete:
             self.complete(keep_transfer_key=True)
 
-    def fileStreamer(self, fmfile, callback=None):
+    def _fileStreamer(self, fmfile, callback=None):
+        """
+        Supplies the :func:`send` function with bytes of data.
+
+        :param fmfile: :class:`FMFile` object passed from :func:`send`
+        :param callback: passed from :func:`send`
+        """
+
         chunksize = 65536
         incr = 100.0 / (fmfile.get('totalsize') / chunksize)
         count = 0
@@ -111,6 +151,13 @@ class Transfer():
                 yield data
 
     def complete(self, keep_transfer_key=False):
+        """
+        Completes the transfer and shoots off email(s) to recipients.
+
+        :param keep_transfer_key: `Boolean` setting whether or not to keep the
+            transfer key. This is needed for the :func:`update`
+        """
+
         url = getURL('complete')
 
         payload = {
@@ -126,13 +173,24 @@ class Transfer():
             hellraiser(res.json())
 
         self._complete = True
-        print res.json()
 
     def isComplete(self):
+        """:returns: `Boolean` `True` if transfer is complete"""
+
         return self._complete
 
     def update(self, **kwargs):
-        '''Update an completed transfer'''
+        """
+        Update a completed transfer with new information.
+
+        :param \*\*kwargs:
+
+        \*\*kwargs may contain:
+            * `message` (`String`)
+            * `days` (`Integer`) available
+            * `downloads` (`Integer`) number of
+            * `notify` (`Boolean`) on downloads
+        """
 
         url = getURL('update')
 
@@ -154,6 +212,10 @@ class Transfer():
         self.transfer_info.update(res.json())
 
     def delete(self):
+        """
+        Delete the current transfer.
+        """
+
         url = getURL('delete')
 
         payload = {
@@ -167,9 +229,11 @@ class Transfer():
         if not res.ok:
             hellraiser(res.json())
 
-        print res.json()
-
     def zip(self):
+        """
+        Zip the current transfer on the server side.
+        """
+
         url = getURL('zip')
 
         payload = {
@@ -183,9 +247,11 @@ class Transfer():
         if not res.ok:
             hellraiser(res.json())
 
-        print res.json()
-
     def cancel(self):
+        """
+        Cancel the current transfer.
+        """
+
         url = getURL('cancel')
 
         payload = {
@@ -200,17 +266,34 @@ class Transfer():
             hellraiser(res.json())
 
         self._complete = True
-        print res.json()
 
     def share(self, **kwargs):
+        """
+        Share the transfer with new message to new people.
+
+        :param \*\*kwargs:
+
+        \*\*kwargs may contain:
+            * `to` (`List`) of email addresses or comma seperated `String`
+            * `from` (`String`) with alternate email
+            * `message` (`String`)
+        """
+
         url = getURL('share')
+
+        if 'to' in kwargs:
+            to = kwargs.get('to')
+            if isinstance(to, list):
+                recipients = ','.join(to)
+            else:
+                recipients = to
 
         payload = {
             'apikey': self.config.get('apikey'),
             'logintoken': self.config.get('logintoken'),
             'transferid': self.transferid,
-            'to': ','.join(list(kwargs.get('to'))),
-            'from': self.config.get('username'),
+            'to': ','.join(recipients),
+            'from': kwargs.get('from', self.config.get('username')),
             'message': kwargs.get('message')
             }
 
@@ -219,9 +302,14 @@ class Transfer():
         if not res.ok:
             hellraiser(res.json())
 
-        print res.json()
-
     def forward(self, to=None):
+        """
+        Forward original transfer to new recipients.
+
+        :param to: `List` of new recipients or comma seperted `String`
+
+        """
+
         if isinstance(to, (str, unicode)):
             to = to.split(',')
         elif isinstance(to, list):
@@ -241,9 +329,14 @@ class Transfer():
         if not res.ok:
             hellraiser(res.json())
 
-        print res.json()
-
     def getFiles(self):
+        """
+        Get `List` of :class:`FMFile` objects for the current transfer.
+
+        :returns: `List` of :class:`FMFile` objects
+
+        """
+
         url = getURL('get')
 
         payload = {
@@ -260,14 +353,20 @@ class Transfer():
         self.transfer_info.update(res.json())
         files = self.transfer_info['transfer']['files']
 
-        #del(self.transfer_info['files'])
-
         for file_data in files:
             self.addFile(FMFile(data=file_data))
 
         return self.files()
 
     def renameFile(self, fmfile, filename):
+        """
+        Rename file in transfer.
+
+        :param fmfile: :class:`FMFile` object instance to rename
+        :param filename: `String` new filename
+
+        """
+
         if not isinstance(fmfile, FMFile):
             raise FMFileError('fmfile must be an FMFile object')
 
@@ -285,9 +384,15 @@ class Transfer():
             hellraiser(res.json())
 
         self._complete = True
-        return res.json()
 
     def deleteFile(self, fmfile):
+        """
+        Delete file in transfer.
+
+        :param fmfile: :class:`FMFile` object instance to delete
+
+        """
+
         if not isinstance(fmfile, FMFile):
             raise FMFileError('fmfile must be an FMFile object')
 
@@ -304,9 +409,10 @@ class Transfer():
             hellraiser(res.json())
 
         self._complete = True
-        return res.json()
 
     def _initialize(self):
+        """Initialize transfer."""
+
         payload = {
             'apikey': self.config.get('apikey'),
             'logintoken': self.config.get('logintoken'),
@@ -318,8 +424,6 @@ class Transfer():
         res = self.session.post(url=url, params=payload)
         if not res.ok:
             hellraiser(res.json())
-
-        return res.json()
 
     def __repr__(self):
         return repr(self.transfer_info)
