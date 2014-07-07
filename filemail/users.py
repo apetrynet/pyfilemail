@@ -22,7 +22,8 @@ class User():
     :param username: `String` with registered filemail username
     :param apikey: (optional) `String` api key from filemail.com
     :param password: (optional) `String` users filemail password
-    :param \*\*kwargs: Additional `key=value` pairs with user setings
+    :param \*\*kwargs: Additional `key=value` pairs with user setings.
+        See :class:`Config` for valid keywords.
     """
 
     def __init__(self, username, apikey=None, password=None, **kwargs):
