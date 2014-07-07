@@ -3,6 +3,7 @@ from users import User
 from transfer import Transfer
 from config import Config
 from fmfile import FMFile
+from http import FMConnection
 
 
 __title__ = 'filemail'
