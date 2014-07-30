@@ -59,7 +59,7 @@ class Transfer():
 
         self._files.append(fmfile)
 
-        self._complete = False
+        self._complete = self.transfer_info.get('status') == 'STATUS_COMPLETE'
 
     def addFiles(self, files):
         """
@@ -75,6 +75,35 @@ class Transfer():
         """:returns: `List` of files related to Transfer"""
 
         return self._files
+
+    def download(self, files, destination):
+        """
+        Download file or files from transfer
+
+        :param files: :class:`FMFile` or list of :class:`FMFile`'s
+        :param destination: `String` containing save path
+        """
+
+        if not isinstance(files, list):
+            files = [files]
+
+        for f in files:
+            if not isinstance(f, FMFile):
+                raise FMFileError('File must be an FMFile instance')
+
+            self._download(f, destination)
+
+    def _download(self, fmfile, destination):
+        filename = fmfile.get('filename')
+        fullpath = os.path.join(destination, filename)
+        chunksize = 65536
+
+        url = fmfile.get('downloadurl')
+        stream = self.session.post(url, stream=True)
+
+        with open(fullpath, 'wb') as f:
+            for chunk in stream.iter_content(chunksize):
+                f.write(chunk)
 
     def getTransferID(self):
         """
@@ -424,6 +453,9 @@ class Transfer():
         res = self.session.post(url=url, params=payload)
         if not res.ok:
             hellraiser(res.json())
+
+        print res.json()
+        return res.json()
 
     def __repr__(self):
         return repr(self.transfer_info)
