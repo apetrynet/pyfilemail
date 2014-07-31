@@ -108,7 +108,7 @@ class Transfer():
         filename = fmfile.get('filename')
         fullpath = os.path.join(destination, filename)
         filesize = fmfile.get('filesize')
-        chunksize = 65536
+        chunksize = 125000
         incr = 100.0 / (filesize / chunksize)
         count = 0
 
@@ -179,7 +179,7 @@ class Transfer():
         :param callback: passed from :func:`send`
         """
 
-        chunksize = 65536
+        chunksize = 125000
         incr = 100.0 / (fmfile.get('totalsize') / chunksize)
         count = 0
         data = None
