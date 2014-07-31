@@ -46,7 +46,7 @@ from filemail and a registered user to be able to send files.
     transfer.addFiles(list_of_files)
 
     # Send files to recipient(s)
-    transfer.send(callback=myCallbackFunction)
+    transfer.send(callback=myCallbackFunction, auto_complete=True)
 
     # Logout
     user.logout()
