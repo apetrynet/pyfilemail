@@ -76,12 +76,14 @@ class Transfer():
 
         return self._files
 
-    def download(self, files, destination):
+    def download(self, files, destination, callback=None):
         """
-        Download file or files from transfer
+        Download file or files.
 
         :param files: :class:`FMFile` or list of :class:`FMFile`'s
         :param destination: `String` containing save path
+        :param callback: pass instance of callback function that will receive a
+            percentage of file transfered
         """
 
         if not isinstance(files, list):
@@ -91,12 +93,24 @@ class Transfer():
             if not isinstance(f, FMFile):
                 raise FMFileError('File must be an FMFile instance')
 
-            self._download(f, destination)
+            self._download(f, destination, callback)
 
-    def _download(self, fmfile, destination):
+    def _download(self, fmfile, destination, callback):
+        """
+        The actual downloader streaming content from Filemail.
+
+        :param fmfile: :class:`FMFile` to download
+        :param destination: `String` containing save path
+        :param callback: pass instance of callback function that will receive a
+            percentage of file transfered
+        """
+
         filename = fmfile.get('filename')
         fullpath = os.path.join(destination, filename)
+        filesize = fmfile.get('filesize')
         chunksize = 65536
+        incr = 100.0 / (filesize / chunksize)
+        count = 0
 
         url = fmfile.get('downloadurl')
         stream = self.session.post(url, stream=True)
@@ -104,6 +118,10 @@ class Transfer():
         with open(fullpath, 'wb') as f:
             for chunk in stream.iter_content(chunksize):
                 f.write(chunk)
+
+                if callback is not None:
+                    callback(int(incr * count))
+                    count += 1
 
     def getTransferID(self):
         """
@@ -123,7 +141,7 @@ class Transfer():
         """
         Begin uploading file(s) and sending email(s).
 
-        :param callback: pass name of callback function that will receive a
+        :param callback: pass instance of callback function that will receive a
             percentage of file transfered
         :param auto_complete: `Boolean` settinng wheter or not to auto complete
             transfer after upload.
