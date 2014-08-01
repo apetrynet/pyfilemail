@@ -117,6 +117,9 @@ class Transfer():
 
         with open(fullpath, 'wb') as f:
             for chunk in stream.iter_content(chunksize):
+                if not chunk:
+                    break
+
                 f.write(chunk)
 
                 if callback is not None:
@@ -472,7 +475,6 @@ class Transfer():
         if not res.ok:
             hellraiser(res.json())
 
-        print res.json()
         return res.json()
 
     def __repr__(self):
