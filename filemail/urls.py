@@ -21,7 +21,19 @@ api_urls = {
     'sent_get': 'api/transfer/sent/get',
     'received_get': 'api/transfer/received/get',
     'user_get': 'api/user/get',
-    'user_update': 'api/user/update'
+    'user_update': 'api/user/update',
+    'contacts_get': '/api/contacts/get',
+    'contacts_add': '/api/contacts/add',
+    'contacts_update': '/api/contacts/update',
+    'contacts_delete': '/api/contacts/delete',
+    'contacts_add_to_group': '/api/contacts/addtogroup',
+    'contacts_remove_from_group': '/api/contacts/removefromgroup',
+    'group_get': '/api/contacts/group/get',
+    'group_add': '/api/contacts/group/add',
+    'group_update': '/api/contacts/group/update',
+    'group_delete': '/api/contacts/group/delete'
+
+
     }
 
 
