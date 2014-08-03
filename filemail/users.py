@@ -172,6 +172,30 @@ class User():
 
         return self.config
 
+    def getContacts(self):
+        """
+        :returns: `List` of :class:`Contact`s for the current user
+        """
+
+        self.validateLoginStatus()
+
+        url = getURL('contacts_get')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken')
+            }
+
+        res = self.session.post(url=url, params=payload)
+
+        if not res.ok:
+            hellraiser(res.json())
+
+        contacts = list()
+        for contact in res.json()['contacts']:
+            contacts.append(Contact(**contact))
+        return contacts
+
     def save(self, config_path=None):
         """
         Saves the current config/settings to `config_path`.
@@ -251,10 +275,22 @@ class User():
         self._logged_in = state
 
 
-class Contacts():
+class Contact():
 
-    def __init__(self):
-        raise NotImplemented
+    def __init__(self, **kwargs):
+        self._data = kwargs
+
+    def get(self, key):
+        if key in self._data:
+            return self._data[key]
+
+        return None
+
+    def set(self, key, value):
+        self._data[key] = value
+
+    def __repr__(self):
+        return repr(self._data)
 
 
 class Company():
