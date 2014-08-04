@@ -1,6 +1,10 @@
 Filemail Pyhton API
 ===================
 
+..  automodule:: filemail.utils
+    :members:
+    :undoc-members:
+
 ..  automodule:: filemail
     :members:
     :undoc-members:
