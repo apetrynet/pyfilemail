@@ -1,5 +1,6 @@
 import os
 
+import users
 from urls import getURL
 from fmfile import FMFile
 from errors import hellraiser, FMBaseError, FMFileError
@@ -36,6 +37,23 @@ class Transfer():
         self.session = self._user.session
         self.transfer_info = dict(kwargs)
         self.transfer_info.update({'from': self._user.username})
+
+        if 'to' in self.transfer_info:
+
+            to = self.transfer_info['to']
+
+            recipients = list()
+
+            if not isinstance(to, list):
+                to = [to]
+
+            for recipient in to:
+                if isinstance(recipient, (users.Contact, users.Group)):
+                    recipients.append(recipient.get('name'))
+                else:
+                    recipients.append(recipient)
+
+            self.transfer_info['to'] = ', '.join(recipients)
 
         if 'status' not in self.transfer_info:
             self.transfer_info.update(self._initialize())
