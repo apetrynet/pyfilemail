@@ -2,7 +2,7 @@
 filemail.users
 ~~~~~~~~~~~~~~
 
-Contains :User:, :Contacts: and :Company: classes
+Contains :User:, :Contact:, :Group: and :Company: classes
 """
 
 from calendar import timegm
@@ -13,6 +13,7 @@ from config import Config
 from transfer import Transfer
 from http import FMConnection
 from errors import hellraiser, FMBaseError
+from utils import validString, validEmail
 
 
 class User():
@@ -44,6 +45,64 @@ class User():
                 self.config.set(key, value)
 
         self.session = FMConnection(self)
+
+    def addContact(self, name, email):
+        """
+        :param name: `String` with name of contact
+        :param email: `String` with vaild email for contact
+        :returns: :class:`Contact` object for new current user
+        """
+
+        self.validateLoginStatus()
+
+        if not validString(name):
+            raise AttributeError('`name` must be a <str> or <unicode>')
+
+        if not validEmail(email):
+            raise AttributeError('Not a valid email')
+
+        url = getURL('contacts_add')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken'),
+            'name': name,
+            'email': email
+            }
+
+        res = self.session.post(url=url, params=payload)
+
+        if not res.ok:
+            hellraiser(res.json())
+
+        contact = res.json()['contact']
+
+        return Contact(**contact)
+
+    def deleteContact(self, contact):
+        """
+        Delete contact.
+
+        :param comtact: :class:`Comtact`
+        """
+
+        self.validateLoginStatus()
+
+        if not isinstance(contact, Contact):
+            raise AttributeError('contact must be a <Contact> instance')
+
+        url = getURL('contacts_delete')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken'),
+            'contactid': contact.get('contactid')
+            }
+
+        res = self.session.post(url=url, params=payload)
+
+        if not res.ok:
+            hellraiser(res.json())
 
     def getInfo(self):
         """
@@ -174,7 +233,7 @@ class User():
 
     def getContacts(self):
         """
-        :returns: `List` of :class:`Contact`s for the current user
+        :returns: `List` of :class:`Contact` objects for the current user
         """
 
         self.validateLoginStatus()
@@ -254,6 +313,41 @@ class User():
 
         return self._transfers
 
+    def updateContact(self, contact, name=None, email=None):
+        """
+        Update name and/or email for contact.
+
+        :param contact: :class:`Contact` instance to change
+        :param name: `String` with updated name
+        :param email: `Stinng` with updated email
+        """
+
+        self.validateLoginStatus()
+
+        if not isinstance(contact, Contact):
+            raise AttributeError('contact must be a <Contact> instance')
+
+        if name is not None and not validString(name):
+            raise AttributeError('`name` must be a <str> or <unicode>')
+
+        if email is not None and not validEmail(email):
+            raise AttributeError('Not a valid email')
+
+        url = getURL('contacts_update')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.config.get('logintoken'),
+            'contactid': contact.get('contactid'),
+            'name': name or contact.get('name'),
+            'email': email or contact.get('email')
+            }
+
+        res = self.session.post(url=url, params=payload)
+
+        if not res.ok:
+            hellraiser(res.json())
+
     def checkAllTransfers(self):
         """
         Check if all transfers are completed.
@@ -276,6 +370,24 @@ class User():
 
 
 class Contact():
+
+    def __init__(self, **kwargs):
+        self._data = kwargs
+
+    def get(self, key):
+        if key in self._data:
+            return self._data[key]
+
+        return None
+
+    def set(self, key, value):
+        self._data[key] = value
+
+    def __repr__(self):
+        return repr(self._data)
+
+
+class Group():
 
     def __init__(self, **kwargs):
         self._data = kwargs
