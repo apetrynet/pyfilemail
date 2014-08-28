@@ -26,7 +26,7 @@ def validEmail(email):
     :returns: `Boolean`
     """
 
-    if not isinstance(email, (str, unicode)):
+    if not validString(email):
         return False
 
     res = search('(\w+[\.]?)+@(\w+[\.]?)+', email)
