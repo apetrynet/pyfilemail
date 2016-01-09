@@ -5,39 +5,40 @@ from errors import FMConfigError
 base_url = 'https://www.filemail.com'
 
 api_urls = {
-    'login': 'api/authentication/login',
-    'logout': 'api/authentication/logout',
-    'init': 'api/transfer/initialize',
-    'get': 'api/transfer/get',
-    'complete': 'api/transfer/complete',
-    'forward': 'api/transfer/forward',
-    'share': 'api/transfer/share',
-    'cancel': 'api/transfer/cancel',
-    'delete': 'api/transfer/delete',
-    'zip': 'api/transfer/zip',
-    'file_rename': 'api/transfer/file/rename',
-    'file_delete': 'api/transfer/file/delete',
-    'update': 'api/transfer/update',
-    'sent_get': 'api/transfer/sent/get',
-    'received_get': 'api/transfer/received/get',
-    'user_get': 'api/user/get',
-    'user_update': 'api/user/update',
-    'contacts_get': 'api/contacts/get',
-    'contacts_add': 'api/contacts/add',
-    'contacts_update': 'api/contacts/update',
-    'contacts_delete': 'api/contacts/delete',
-    'contacts_add_to_group': 'api/contacts/addtogroup',
-    'contacts_remove_from_group': 'api/contacts/removefromgroup',
-    'group_get': 'api/contacts/group/get',
-    'group_add': 'api/contacts/group/add',
-    'group_update': 'api/contacts/group/update',
-    'group_delete': 'api/contacts/group/delete'
+    'login': ['get', 'api/authentication/login'],
+    'logout': ['get', 'api/authentication/logout'],
+    'init': ['get', 'api/transfer/initialize'],
+    'get': ['get', 'api/transfer/get'],
+    'complete': ['get', 'api/transfer/complete'],
+    'forward': ['get', 'api/transfer/forward'],
+    'share': ['get', 'api/transfer/share'],
+    'cancel': ['get', 'api/transfer/cancel'],
+    'delete': ['get', 'api/transfer/delete'],
+    'zip': ['get', 'api/transfer/zip'],
+    'file_rename': ['get', 'api/transfer/file/rename'],
+    'file_delete': ['get', 'api/transfer/file/delete'],
+    'update': ['get', 'api/transfer/update'],
+    'sent_get': ['get', 'api/transfer/sent/get'],
+    'received_get': ['get', 'api/transfer/received/get'],
+    'user_get': ['get', 'api/user/get'],
+    'user_update': ['get', 'api/user/update'],
+    'contacts_get': ['get', 'api/contacts/get'],
+    'contacts_add': ['get', 'api/contacts/add'],
+    'contacts_update': ['get', 'api/contacts/update'],
+    'contacts_delete': ['get', 'api/contacts/delete'],
+    'contacts_add_to_group': ['get', 'api/contacts/addtogroup'],
+    'contacts_remove_from_group': ['get', 'api/contacts/removefromgroup'],
+    'group_get': ['get', 'api/contacts/group/get'],
+    'group_add': ['get', 'api/contacts/group/add'],
+    'group_update': ['get', 'api/contacts/group/update'],
+    'group_delete': ['get', 'api/contacts/group/delete']
     }
 
 
 def getURL(action):
     if action in api_urls:
-        url = os.path.join(base_url, api_urls[action])
-        return url
+        method, url = api_urls[action]
+        url = os.path.join(base_url, url)
+        return method, url
 
     raise FMConfigError('You passed an invalid action: {}'.format(action))
