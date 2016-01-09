@@ -70,7 +70,7 @@ class User():
             'email': email
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -99,7 +99,7 @@ class User():
             'contactid': contact.get('contactid')
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -120,7 +120,7 @@ class User():
             'logintoken': self.config.get('logintoken')
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -148,7 +148,9 @@ class User():
 
         method, url = getURL('user_update')
 
-        res = self.session.post(url=url, params=self.config.dump())
+        res = self.session.send(method=method,
+                                url=url,
+                                params=self.config.dump())
 
         if not res.ok:
             hellraiser(res.json())
@@ -171,7 +173,7 @@ class User():
             'getall': expired
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -214,7 +216,7 @@ class User():
             'from': age
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -245,7 +247,7 @@ class User():
             'logintoken': self.config.get('logintoken')
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -343,7 +345,7 @@ class User():
             'email': email or contact.get('email')
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
