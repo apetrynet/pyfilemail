@@ -11,7 +11,7 @@ def validString(value):
     :returns: `Boolean`
     """
 
-    if not isinstance(value, (str, unicode)):
+    if not isinstance(value, basestring):
         return False
 
     return True
