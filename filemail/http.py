@@ -52,31 +52,6 @@ class FMConnection():
         res = getattr(self._session, method)(url=url, params=params, **kwargs)
         return res
 
-    def get(self, url=None, params=None, **kwargs):
-        """
-        HTTP GET
-        :param url: `String` to filemail
-        :param params: `Dictionary` with payload from all functions
-        :param \*\*kwargs: with additional data for transfers
-
-        """
-
-        res = self._session.get(url=url, params=params, **kwargs)
-        return res
-
-    def post(self, url=None, params=None, **kwargs):
-        """
-        HTTP POST
-
-        :param url: `String` to filemail
-        :param params: `Dictionary` with payload from all functions
-        :param \*\*kwargs: with additional data for transfers
-
-        """
-
-        res = self._session.post(url=url, params=params, **kwargs)
-        return res
-
     def _connect(self, action):
         """
         Connect and Disconnect to filemail.
