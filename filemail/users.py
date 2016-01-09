@@ -61,7 +61,7 @@ class User():
         if not validEmail(email):
             raise AttributeError('Not a valid email')
 
-        url = getURL('contacts_add')
+        method, url = getURL('contacts_add')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -91,7 +91,7 @@ class User():
         if not isinstance(contact, Contact):
             raise AttributeError('contact must be a <Contact> instance')
 
-        url = getURL('contacts_delete')
+        method, url = getURL('contacts_delete')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -113,7 +113,7 @@ class User():
         #: Fail if user not logged in
         self.validateLoginStatus()
 
-        url = getURL('user_get')
+        method, url = getURL('user_get')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -146,7 +146,7 @@ class User():
 
             self.config.update(info)
 
-        url = getURL('user_update')
+        method, url = getURL('user_update')
 
         res = self.session.post(url=url, params=self.config.dump())
 
@@ -163,7 +163,7 @@ class User():
         """
         self.validateLoginStatus()
 
-        url = getURL('sent_get')
+        method, url = getURL('sent_get')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -198,7 +198,7 @@ class User():
         """
         self.validateLoginStatus()
 
-        url = getURL('received_get')
+        method, url = getURL('received_get')
 
         if age:
             if not isinstance(age, int) or age < 0 or age > 90:
@@ -238,7 +238,7 @@ class User():
 
         self.validateLoginStatus()
 
-        url = getURL('contacts_get')
+        method, url = getURL('contacts_get')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -333,7 +333,7 @@ class User():
         if email is not None and not validEmail(email):
             raise AttributeError('Not a valid email')
 
-        url = getURL('contacts_update')
+        method, url = getURL('contacts_update')
 
         payload = {
             'apikey': self.config.get('apikey'),
