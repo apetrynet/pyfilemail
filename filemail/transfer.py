@@ -131,7 +131,7 @@ class Transfer():
         count = 0
 
         url = fmfile.get('downloadurl')
-        stream = self.session.post(url, stream=True)
+        stream = self.session.send(method='get', url=url, stream=True)
 
         with open(fullpath, 'wb') as f:
             for chunk in stream.iter_content(chunksize):
@@ -178,10 +178,11 @@ class Transfer():
             fmfile.set('transferid', self.transferid)
             fmfile.set('transferkey', self.transfer_info['transferkey'])
 
-            res = self.session.post(url=url,
+            res = self.session.send(method='get',
+                                    url=url,
                                     params=fmfile.fileInfo(),
                                     data=self._fileStreamer(fmfile,
-                                                           callback),
+                                                            callback),
                                     stream=True)
 
             res.text
@@ -226,7 +227,7 @@ class Transfer():
             transfer key. This is needed for the :func:`update`
         """
 
-        url = getURL('complete')
+        method, url = getURL('complete')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -235,7 +236,7 @@ class Transfer():
             'keep_transfer_key': keep_transfer_key
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -260,7 +261,7 @@ class Transfer():
             * `notify` (`Boolean`) on downloads
         """
 
-        url = getURL('update')
+        method, url = getURL('update')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -272,7 +273,7 @@ class Transfer():
             'notify': kwargs.get('notify')
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -284,7 +285,7 @@ class Transfer():
         Delete the current transfer.
         """
 
-        url = getURL('delete')
+        method, url = getURL('delete')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -292,7 +293,7 @@ class Transfer():
             'logintoken': self.config.get('logintoken')
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -302,7 +303,7 @@ class Transfer():
         Zip the current transfer on the server side.
         """
 
-        url = getURL('zip')
+        method, url = getURL('zip')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -310,7 +311,7 @@ class Transfer():
             'transferkey': self.transfer_info.get('transferkey')
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -320,7 +321,7 @@ class Transfer():
         Cancel the current transfer.
         """
 
-        url = getURL('cancel')
+        method, url = getURL('cancel')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -328,7 +329,7 @@ class Transfer():
             'transferkey': self.transfer_info.get('transferkey')
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -347,7 +348,7 @@ class Transfer():
             * `message` (`String`)
         """
 
-        url = getURL('share')
+        method, url = getURL('share')
 
         if 'to' in kwargs:
             to = kwargs.get('to')
@@ -365,7 +366,7 @@ class Transfer():
             'message': kwargs.get('message')
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -383,7 +384,7 @@ class Transfer():
         elif isinstance(to, list):
             to = ','.join(to)
 
-        url = getURL('forward')
+        method, url = getURL('forward')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -392,7 +393,7 @@ class Transfer():
             'to': to
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -405,7 +406,7 @@ class Transfer():
 
         """
 
-        url = getURL('get')
+        method, url = getURL('get')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -413,7 +414,7 @@ class Transfer():
             'logintoken': self.config.get('logintoken')
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
 
         if not res.ok:
             hellraiser(res.json())
@@ -438,7 +439,7 @@ class Transfer():
         if not isinstance(fmfile, FMFile):
             raise FMFileError('fmfile must be an FMFile object')
 
-        url = getURL('file_rename')
+        method, url = getURL('file_rename')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -447,7 +448,7 @@ class Transfer():
             'filename': filename
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
         if not res.ok:
             hellraiser(res.json())
 
@@ -464,7 +465,7 @@ class Transfer():
         if not isinstance(fmfile, FMFile):
             raise FMFileError('fmfile must be an FMFile object')
 
-        url = getURL('file_delete')
+        method, url = getURL('file_delete')
 
         payload = {
             'apikey': self.config.get('apikey'),
@@ -472,7 +473,7 @@ class Transfer():
             'fileid': fmfile.get('fileid')
             }
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
         if not res.ok:
             hellraiser(res.json())
 
@@ -487,9 +488,9 @@ class Transfer():
             }
         payload.update(self.transfer_info)
 
-        url = getURL('init')
+        method, url = getURL('init')
 
-        res = self.session.post(url=url, params=payload)
+        res = self.session.send(method=method, url=url, params=payload)
         if not res.ok:
             hellraiser(res.json())
 
