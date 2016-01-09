@@ -38,6 +38,32 @@ class FMConnection():
         self._session.close()
         return True
 
+    def send(self, method=None, url=None, params=None, **kwargs):
+        """
+        HTTP GET|POST
+
+        :param method: `String` get or post returned by :func:`getURL`
+        :param url: `String` to filemail API
+        :param params: `Dictionary` with payload from all functions
+        :param \*\*kwargs: with additional data for transfers
+
+        """
+
+        res = getattr(self._session, method)(url=url, params=params, **kwargs)
+        return res
+
+    def get(self, url=None, params=None, **kwargs):
+        """
+        HTTP GET
+        :param url: `String` to filemail
+        :param params: `Dictionary` with payload from all functions
+        :param \*\*kwargs: with additional data for transfers
+
+        """
+
+        res = self._session.get(url=url, params=params, **kwargs)
+        return res
+
     def post(self, url=None, params=None, **kwargs):
         """
         HTTP POST
@@ -62,7 +88,6 @@ class FMConnection():
         if action not in ['login', 'logout']:
             raise FMBaseError('{}, is not a vaid action'.format(action))
 
-        url = getURL(action)
         auth_keys = {
             'login': ['apikey', 'username', 'password', 'source', 'logintoken'],
             'logout': ['apikey', 'logintoken']
@@ -70,8 +95,8 @@ class FMConnection():
 
         payload = map(lambda k: (k, self._config.get(k)), auth_keys[action])
 
-        res = self.post(url=url,
-                        params=dict(payload))
+        method, url = getURL(action)
+        res = self.send(method=method, url=url, params=dict(payload))
 
         if not res.ok:
             self._session.close()
