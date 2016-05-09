@@ -9,6 +9,7 @@ api_urls = {
     'logout': ['get', 'api/authentication/logout'],
     'init': ['get', 'api/transfer/initialize'],
     'get': ['get', 'api/transfer/get'],
+    'get_sent': ['get', 'api/transfer/sent/get'],
     'complete': ['get', 'api/transfer/complete'],
     'forward': ['get', 'api/transfer/forward'],
     'share': ['get', 'api/transfer/share'],
@@ -18,7 +19,6 @@ api_urls = {
     'file_rename': ['get', 'api/transfer/file/rename'],
     'file_delete': ['get', 'api/transfer/file/delete'],
     'update': ['get', 'api/transfer/update'],
-    'sent_get': ['get', 'api/transfer/sent/get'],
     'received_get': ['get', 'api/transfer/received/get'],
     'user_get': ['get', 'api/user/get'],
     'user_update': ['get', 'api/user/update'],
@@ -35,7 +35,7 @@ api_urls = {
     }
 
 
-def getURL(action):
+def get_URL(action):
     if action in api_urls:
         method, url = api_urls[action]
         url = os.path.join(base_url, url)
