@@ -5,13 +5,16 @@ filemail.users
 Contains :User:, :Contact:, :Group: and :Company: classes
 """
 
+import os
+import json
+from appdirs import AppDirs
 from calendar import timegm
 from datetime import datetime, timedelta
+from requests import Session
 
-from urls import getURL
+from urls import get_URL
 from config import Config
 from transfer import Transfer
-from http import FMConnection
 from errors import hellraiser, FMBaseError
 from utils import validString, validEmail
 
@@ -27,24 +30,58 @@ class User():
         See :class:`Config` for valid keywords.
     """
 
-    def __init__(self, username, apikey=None, password=None, **kwargs):
+    def __init__(self, username, password=None):
 
-        self._logged_in = False
-        self._transfers = []
         self.username = username
+        self._transfers = []
 
-        self.config = Config(self.username)
-        self.config.load()
+        self.session = Session()
+        self.config = self.load_config()
 
-        if apikey and password:
-            self.config.set('apikey', apikey)
-            self.config.set('password', password)
+        apikey = self.config.get('apikey')
+        self.session.cookies['apikey'] = apikey
+        if apikey.startswith('GET KEY FROM'):
+            print apikey
 
-        if kwargs:
-            for key, value in kwargs.items():
-                self.config.set(key, value)
+        if password is not None:
+            self.login(password)
+            self.session.cookies['source'] = 'Desktop'
 
-        self.session = FMConnection(self)
+        else:
+            self.session.cookies['source'] = 'web'
+            self.session.cookies['logintoken'] = None
+
+    def load_config(self):
+        configfile = self.get_configfile()
+
+        with open(configfile, 'rb') as f:
+            return json.load(f)
+
+    def save_config(self, init=False, configfile=None):
+        if init:
+            data = {
+                'apikey': 'GET KEY FROM www.filemail.com/apidoc/ApiKey.aspx'
+                }
+
+        else:
+            configfile = self.get_configfile()
+            data = self.config
+
+        with open(configfile, 'wb') as f:
+            json.dump(data, f, indent=2)
+
+    def get_configfile(self):
+        ad = AppDirs('filemail')
+        configdir = ad.user_data_dir
+        configfile = os.path.join(configdir, 'filemail.cfg')
+
+        if not os.path.exists(configfile):
+            if not os.path.exists(configdir):
+                os.makedirs(configdir)
+
+            self.save_config(init=True, configfile=configfile)
+
+        return configfile
 
     def addContact(self, name, email):
         """
@@ -257,6 +294,10 @@ class User():
             contacts.append(Contact(**contact))
         return contacts
 
+    @property
+    def is_anonymous(self):
+        return not self.session.cookies.get('logintoken')
+
     def save(self, config_path=None):
         """
         Saves the current config/settings to `config_path`.
@@ -269,13 +310,29 @@ class User():
 
         self.config.save()
 
-    def login(self):
+    @property
+    def logged_in(self):
+        return not self.session.cookies.get('logintoken')
+
+    def login(self, password):
         """
         Login to filemail as the current user.
         """
 
-        state = self.session.login()
-        self._setLoginState(state)
+        method, url = get_URL('login')
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'username': self.username,
+            'password': password,
+            'source': 'Desktop'
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
 
     def logout(self):
         """
