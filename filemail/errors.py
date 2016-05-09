@@ -15,7 +15,7 @@ class FMFileError(FMBaseError):
     pass
 
 
-def hellraiser(response_dict):
+def hellraiser(response):
     _errors = {
         # General Errors
         1001: 'UnknownError',
@@ -56,13 +56,13 @@ def hellraiser(response_dict):
         5006: 'AllUserLicencesesInUse'
         }
 
+    response_dict = response.json()
     errorcode = response_dict['errorcode']
     errormessage = response_dict['errormessage']
 
     error = type(_errors[errorcode],
                  (FileMailBaseError,),
-                 dict(status=errorcode,
-                      message=errormessage)
-                )
+                 dict(status=errorcode, message=errormessage)
+                 )
 
     raise error
