@@ -1,12 +1,18 @@
 import os
+import datetime
+from glob import glob
+from hashlib import md5
+from uuid import uuid4
+from mimetypes import guess_type
+from zipfile import ZipFile
 
 import users
-from urls import getURL
+from urls import get_URL
 from fmfile import FMFile
 from errors import hellraiser, FMBaseError, FMFileError
 
 
-class Transfer():
+class Transfer(object):
     """
     The Transfer object is the gateway to sending and recieving files through
     filemail.com.
@@ -28,71 +34,160 @@ class Transfer():
     a later stage.
     """
 
-    def __init__(self, user, **kwargs):
-        self._user = user
-        self._user.addTransfer(self)
+    def __init__(self,
+                 fm_user,
+                 to=None,
+                 subject=None,
+                 message=None,
+                 notify=False,
+                 confirmation=False,
+                 days=3,
+                 password=None,
+                 checksum=True,
+                 compress=False):
+
+        if isinstance(fm_user, basestring):
+            self.fm_user = users.User(fm_user)
+
+        elif isinstance(fm_user, users.User):
+            self.fm_user = fm_user
+
+        else:
+            raise FMBaseError('fm_user must be of type "string or User"')
+
+        self.transfer_info = {
+            'from': self.fm_user.username,
+            'to': self._parse_recipients(to),
+            'subject': subject,
+            'message': message,
+            'notify': notify,
+            'confirmation': confirmation,
+            'days': days,
+            'password': password
+            }
+
         self._files = []
-        self._complete = True
-        self.config = self._user.config
-        self.session = self._user.session
-        self.transfer_info = dict(kwargs)
-        self.transfer_info.update({'from': self._user.username})
+        self._complete = False
+        self.checksum = checksum
+        self.compress = compress
+        self.config = self.fm_user.config
+        self.session = self.fm_user.session
+        self._initialize()
 
-        if 'to' in self.transfer_info:
+        #if 'status' not in self.transfer_info:
+            #self.transfer_info.update(self._initialize())
 
-            to = self.transfer_info['to']
+        #self.transferid = self.getTransferID()
 
-            recipients = list()
+    def _parse_recipients(self, to):
+        if to is None:
+            return None
 
-            if not isinstance(to, list):
-                to = [to]
+        if isinstance(to, list):
+            recipients = []
 
             for recipient in to:
-                if isinstance(recipient, (users.Contact, users.Group)):
+                if isinstance(recipient, users.Contact):
                     recipients.append(recipient.get('name'))
+
+                elif isinstance(recipient, users.Group):
+                    msg = 'Groups are not supported recipients yet. Sorry'
+                    raise NotImplemented(msg)
+
                 else:
                     recipients.append(recipient)
 
-            self.transfer_info['to'] = ', '.join(recipients)
+        elif isinstance(to, basestring):
+            if ',' in to:
+                recipients = to.strip().split(',')
 
-        if 'status' not in self.transfer_info:
-            self.transfer_info.update(self._initialize())
+            else:
+                recipients = [to]
 
-        self.transferid = self.getTransferID()
+        return ', '.join(recipients)
 
-    def addFile(self, filename):
-        """
-        Add a single file to Transfer.
-
-        :param filename: `String` with full path to file
-        """
-
-        if isinstance(filename, FMFile):
-            fmfile = filename
-        else:
-            if not os.path.isfile(filename):
-                raise FMBaseError('No such file: {}'.format(filename))
-
-            fmfile = FMFile(filename)
-
-        self._files.append(fmfile)
-
-        self._complete = self.transfer_info.get('status') == 'STATUS_COMPLETE'
-
-    def addFiles(self, files):
+    def add_files(self, files):
         """
         Add multiple files.
 
         :param files: `List` of paths to files
         """
 
-        for filename in files:
-            self.addFile(filename)
+        if isinstance(files, basestring):
+            files = [files]
 
+        zip_file = None
+        if self.compress:
+            zip_filename = self._get_zip_filename()
+            zip_file = ZipFile(zip_filename, 'w')
+
+        for filename in files:
+            if os.path.isdir(filename):
+                for dirname, subdirs, filelist in os.walk(filename):
+                    if dirname:
+                        if self.compress:
+                            zip_file.write(dirname)
+
+                    for fname in filelist:
+                        filepath = os.path.join(dirname, fname)
+                        if self.compress:
+                            zip_file.write(filepath)
+
+                        else:
+                            fmfile = self.get_file_specs(filepath,
+                                                         keep_folders=True)
+                            if fmfile['totalzize'] > 0:
+                                self._files.append(fmfile)
+
+            else:
+                if self.compress:
+                    zip_file.write(filename)
+
+                else:
+                    fmfile = self.get_file_specs(filename)
+                    self._files.append(fmfile)
+
+        if self.compress:
+            zip_file.close()
+            filename = zip_filename
+            fmfile = self.get_file_specs(filename)
+            self._files.append(fmfile)
+
+    @property
     def files(self):
         """:returns: `List` of files related to Transfer"""
 
         return self._files
+
+    def get_file_specs(self, filepath, keep_folders=False):
+        path, filename = os.path.split(filepath)
+
+        fileid = str(uuid4()).replace('-', '')
+
+        if self.checksum:
+            with open(filepath, 'rb') as f:
+                md5hash = md5(f.read()).digest().encode('base64')[:-1]
+        else:
+            md5hash = None
+
+        specs = {
+            'transferid': self.transfer_info['transferid'],
+            'transferkey': self.transfer_info['transferkey'],
+            'fileid': fileid,
+            'filepath': filepath,
+            'thefilename': keep_folders and filepath or filename,
+            'totalsize': os.path.getsize(filepath),
+            'md5': md5hash,
+            'content-type': guess_type(filepath)[0]
+            }
+
+        return specs
+
+    def _get_zip_filename(self):
+        date = datetime.datetime.now().strftime('%Y_%m_%d-%H%M%S')
+        zip_file = 'filemail_transfer_{date}.zip'.format(date=date)
+
+        return zip_file
 
     def download(self, files, destination, callback=None):
         """
@@ -172,52 +267,29 @@ class Transfer():
         at a later stage.
         """
 
-        url = self.transfer_info.get('transferurl')
+        # TODO: Figure out a way to reimplement callback function and progress.
+        tot = len(self.files)
+        url = self.transfer_info['transferurl']
 
-        for fmfile in self._files:
-            fmfile.set('transferid', self.transferid)
-            fmfile.set('transferkey', self.transfer_info['transferkey'])
+        for index, fmfile in enumerate(self.files):
+            msg = 'Uploading: "{filename}" ({cur}/{tot})'
+            print msg.format(
+                filename=fmfile['thefilename'],
+                cur=index + 1,
+                tot=tot)
 
-            res = self.session.send(method='get',
-                                    url=url,
-                                    params=fmfile.fileInfo(),
-                                    data=self._fileStreamer(fmfile,
-                                                            callback),
-                                    stream=True)
+            with open(fmfile['filepath'], 'rb') as f:
+                res = self.session.post(url, params=fmfile, data=f)
 
             res.text
 
-            if not res.ok:
-                hellraiser(res.json())
+            if res.status_code != 200:
+                hellraiser(res)
 
         if auto_complete:
-            self.complete(keep_transfer_key=True)
+            return self.complete(keep_transfer_key=True)
 
-    def _fileStreamer(self, fmfile, callback=None):
-        """
-        Supplies the :func:`send` function with bytes of data.
-
-        :param fmfile: :class:`FMFile` object passed from :func:`send`
-        :param callback: passed from :func:`send`
-        """
-
-        chunksize = 125000
-        incr = 100.0 / (fmfile.get('totalsize') / chunksize)
-        count = 0
-        data = None
-        with open(fmfile.fullpath, 'rb') as f:
-            while True:
-                data = f.read(chunksize)
-                fmfile.set('chunkpos', f.tell())
-                if not data:
-                    break
-
-                if callback is not None:
-                    callback(int(incr * count))
-
-                count += 1
-
-                yield data
+        return res
 
     def complete(self, keep_transfer_key=False):
         """
@@ -227,21 +299,23 @@ class Transfer():
             transfer key. This is needed for the :func:`update`
         """
 
-        method, url = getURL('complete')
+        method, url = get_URL('complete')
 
         payload = {
-            'apikey': self.config.get('apikey'),
-            'transferid': self.transferid,
-            'transferkey': self.transfer_info.get('transferkey'),
+            'apikey': self.session.cookies.get('apikey'),
+            'transferid': self.transfer_info['transferid'],
+            'transferkey': self.transfer_info['transferkey'],
             'keep_transfer_key': keep_transfer_key
             }
 
-        res = self.session.send(method=method, url=url, params=payload)
+        res = getattr(self.session, method)(url, params=payload)
 
-        if not res.ok:
-            hellraiser(res.json())
+        if res.status_code != 200:
+            hellraiser(res)
 
         self._complete = True
+
+        return res
 
     def isComplete(self):
         """:returns: `Boolean` `True` if transfer is complete"""
@@ -264,7 +338,7 @@ class Transfer():
         method, url = getURL('update')
 
         payload = {
-            'apikey': self.config.get('apikey'),
+            'apikey': self.session.cookies.get('apikey'),
             'logintoken': self.config.get('logintoken'),
             'transferid': self.transferid,
             'message': kwargs.get('message'),
@@ -288,7 +362,7 @@ class Transfer():
         method, url = getURL('delete')
 
         payload = {
-            'apikey': self.config.get('apikey'),
+            'apikey': self.session.cookies.get('apikey'),
             'transferid': self.transfer_info.get('transferid'),
             'logintoken': self.config.get('logintoken')
             }
@@ -306,7 +380,7 @@ class Transfer():
         method, url = getURL('zip')
 
         payload = {
-            'apikey': self.config.get('apikey'),
+            'apikey': self.session.cookies.get('apikey'),
             'transferid': self.transferid,
             'transferkey': self.transfer_info.get('transferkey')
             }
@@ -324,7 +398,7 @@ class Transfer():
         method, url = getURL('cancel')
 
         payload = {
-            'apikey': self.config.get('apikey'),
+            'apikey': self.session.cookies.get('apikey'),
             'transferid': self.transferid,
             'transferkey': self.transfer_info.get('transferkey')
             }
@@ -358,7 +432,7 @@ class Transfer():
                 recipients = to
 
         payload = {
-            'apikey': self.config.get('apikey'),
+            'apikey': self.session.cookies.get('apikey'),
             'logintoken': self.config.get('logintoken'),
             'transferid': self.transferid,
             'to': ','.join(recipients),
@@ -387,7 +461,7 @@ class Transfer():
         method, url = getURL('forward')
 
         payload = {
-            'apikey': self.config.get('apikey'),
+            'apikey': self.session.cookies.get('apikey'),
             'transferid': self.transferid,
             'transferkey': self.transfer_info.get('transferkey'),
             'to': to
@@ -409,7 +483,7 @@ class Transfer():
         method, url = getURL('get')
 
         payload = {
-            'apikey': self.config.get('apikey'),
+            'apikey': self.session.cookies.get('apikey'),
             'transferid': self.transferid,
             'logintoken': self.config.get('logintoken')
             }
@@ -442,7 +516,7 @@ class Transfer():
         method, url = getURL('file_rename')
 
         payload = {
-            'apikey': self.config.get('apikey'),
+            'apikey': self.session.cookies.get('apikey'),
             'logintoken': self.config.get('logintoken'),
             'fileid': fmfile.get('fileid'),
             'filename': filename
@@ -468,7 +542,7 @@ class Transfer():
         method, url = getURL('file_delete')
 
         payload = {
-            'apikey': self.config.get('apikey'),
+            'apikey': self.session.cookies.get('apikey'),
             'logintoken': self.config.get('logintoken'),
             'fileid': fmfile.get('fileid')
             }
@@ -483,18 +557,24 @@ class Transfer():
         """Initialize transfer."""
 
         payload = {
-            'apikey': self.config.get('apikey'),
-            'logintoken': self.config.get('logintoken'),
+            'apikey': self.session.cookies.get('apikey'),
+            'source': self.session.cookies.get('source')
             }
+
+        if self.fm_user.logged_in:
+            payload['logintoken'] = self.session.cookies.get('logintoken')
+
         payload.update(self.transfer_info)
 
-        method, url = getURL('init')
+        method, url = get_URL('init')
 
-        res = self.session.send(method=method, url=url, params=payload)
-        if not res.ok:
-            hellraiser(res.json())
+        res = getattr(self.session, method)(url, params=payload)
+        if res.status_code == 200:
+            for key in ['transferid', 'transferkey', 'transferurl']:
+                self.transfer_info[key] = res.json().get(key)
 
-        return res.json()
+        else:
+            hellraiser(res)
 
     def __repr__(self):
         return repr(self.transfer_info)
