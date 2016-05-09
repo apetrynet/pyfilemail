@@ -15,7 +15,7 @@ if isinstance(k, keyring.backends.fail.Keyring):
 from users import User
 from transfer import Transfer
 
-unishizzle = lambda s: unicode(s, 'utf-8')
+unicodize = lambda s: unicode(s, 'utf-8')
 
 
 def parse_args():
@@ -71,7 +71,7 @@ def parse_args():
     parser.add_argument('--message',
                         dest='message',
                         action='store',
-                        type=unishizzle,
+                        type=unicodize,
                         default='Files sent with filemail.py',
                         help='Message to the recipient(s) of the transfer')
 
@@ -84,7 +84,7 @@ def parse_args():
     parser.add_argument('--subject',
                         dest='subject',
                         action='store',
-                        type=unishizzle,
+                        type=unicodize,
                         default='',
                         help='Subject of email sent with transfer')
 
@@ -93,7 +93,7 @@ def parse_args():
                         required=True,
                         action='store',
                         nargs='+',
-                        type=unishizzle,
+                        type=unicodize,
                         default=None,
                         metavar='recipient@receiver.com',
                         help='Recipient(s) of the transfer (email addresses)')
@@ -101,7 +101,7 @@ def parse_args():
     parser.add_argument('--password',
                         dest='password',
                         action='store',
-                        type=unishizzle,
+                        type=unicodize,
                         default='',
                         help='Protect transfer with the supplied password')
 
@@ -109,7 +109,7 @@ def parse_args():
                         dest='username',
                         action='store',
                         required=True,
-                        type=unishizzle,
+                        type=unicodize,
                         default=None,
                         help='Your email address')
 
