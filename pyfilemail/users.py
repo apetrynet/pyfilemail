@@ -12,11 +12,11 @@ from calendar import timegm
 from datetime import datetime, timedelta
 from requests import Session
 
+from pyfilemail import logger
 from urls import get_URL
 from config import Config
 from transfer import Transfer
 from errors import hellraiser, FMBaseError
-from utils import validString, validEmail
 
 
 class User():
@@ -41,7 +41,8 @@ class User():
         apikey = self.config.get('apikey')
         self.session.cookies['apikey'] = apikey
         if apikey.startswith('GET KEY FROM'):
-            print apikey
+            msg = 'No API KEY set in config.\n{apikey}\n'
+            logger.warning(msg.format(apikey=apikey))
 
         if password is not None:
             self.login(password)
@@ -71,9 +72,9 @@ class User():
             json.dump(data, f, indent=2)
 
     def get_configfile(self):
-        ad = AppDirs('filemail')
+        ad = AppDirs('pyfilemail')
         configdir = ad.user_data_dir
-        configfile = os.path.join(configdir, 'filemail.cfg')
+        configfile = os.path.join(configdir, 'pyfilemail.cfg')
 
         if not os.path.exists(configfile):
             if not os.path.exists(configdir):
@@ -297,18 +298,6 @@ class User():
     @property
     def is_anonymous(self):
         return not self.session.cookies.get('logintoken')
-
-    def save(self, config_path=None):
-        """
-        Saves the current config/settings to `config_path`.
-
-        :param config_path: (optional) `String` with fullpath to
-            ``filemail.cfg``.
-
-        If `config_path` is ``None`` it defaults to ``${HOME}/filemail.cfg``.
-        """
-
-        self.config.save()
 
     @property
     def logged_in(self):

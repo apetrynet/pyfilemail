@@ -1,12 +1,12 @@
 import os
 import datetime
-from glob import glob
 from hashlib import md5
 from uuid import uuid4
 from mimetypes import guess_type
 from zipfile import ZipFile
 
 import users
+from pyfilemail import logger
 from urls import get_URL
 from fmfile import FMFile
 from errors import hellraiser, FMBaseError, FMFileError
@@ -273,10 +273,12 @@ class Transfer(object):
 
         for index, fmfile in enumerate(self.files):
             msg = 'Uploading: "{filename}" ({cur}/{tot})'
-            print msg.format(
-                filename=fmfile['thefilename'],
-                cur=index + 1,
-                tot=tot)
+            logger.info(
+                msg.format(
+                    filename=fmfile['thefilename'],
+                    cur=index + 1,
+                    tot=tot)
+                )
 
             with open(fmfile['filepath'], 'rb') as f:
                 res = self.session.post(url, params=fmfile, data=f)

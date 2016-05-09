@@ -3,6 +3,7 @@
 import sys
 import argparse
 import getpass
+import logging
 
 import keyring
 from keyring.errors import PasswordDeleteError
@@ -12,6 +13,7 @@ k = keyring.get_keyring()
 if isinstance(k, keyring.backends.fail.Keyring):
     KEYRING = False
 
+from pyfilemail import logger, streamhandler
 from users import User
 from transfer import Transfer
 
@@ -135,9 +137,13 @@ def parse_args():
 
     args = parser.parse_args()
 
+    if args.console:
+        streamhandler.setLevel(logging.INFO)
+        logger.info('Logging to console enabled.')
+
     if args.delete_password and KEYRING:
         try:
-            keyring.delete_password('filemail', args.username)
+            keyring.delete_password('pyfilemail', args.username)
             msg = 'Password for {user} successfully deleted.'
             sys.exit(msg.format(user=args.username))
 
@@ -154,12 +160,12 @@ if __name__ == '__main__':
 
     if not args.anonymous:
         if KEYRING:
-            pwd = keyring.get_password('filemail', args.username)
+            pwd = keyring.get_password('pyfilemail', args.username)
 
         if pwd is None:
             pwd = getpass.getpass('Please enter Filemail password: ')
             if args.store_password and KEYRING:
-                keyring.set_password('filemail', args.username, pwd)
+                keyring.set_password('pyfilemail', args.username, pwd)
 
     fm_user = User(args.username, password=pwd)
 
@@ -178,9 +184,8 @@ if __name__ == '__main__':
 
     transfer.add_files(args.payload)
 
-    #print 'Sending files...'
     res = transfer.send()
 
     if res.status_code == 200:
-        msg = 'Files sent successfully!'
-        print msg
+        msg = 'Transfer complete!'
+        logger.info(msg)
