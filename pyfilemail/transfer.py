@@ -8,7 +8,6 @@ from zipfile import ZipFile
 import users
 from pyfilemail import logger
 from urls import get_URL
-from fmfile import FMFile
 from errors import hellraiser, FMBaseError, FMFileError
 
 
