@@ -12,7 +12,7 @@ pyfilemail uses filemail's `official API <http://www.filemail.com/apidoc/ApiDocu
 and `requests <https://github.com/kennethreitz/requests>`_
 
 Example Usages
-==============
+--------------
 
 You should register and get an `API KEY <http://www.filemail.com/apidoc/ApiKey.aspx>`_
 to unlock all features and be able to add/delete/update your transfers. 
