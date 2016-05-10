@@ -14,7 +14,6 @@ from requests import Session
 
 from pyfilemail import logger
 from urls import get_URL
-from config import Config
 from transfer import Transfer
 from errors import hellraiser, FMBaseError
 
