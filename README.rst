@@ -1,23 +1,41 @@
-========
-filemail
-========
+NOTE!
+=====
+I'm in the middle of a major rewrite so the documentation and some of the methods are out of date. You should be able to send files with the command line tool. Thing will change and the rest of the API will get refactored.
 
-(Unofficial) Pyhton API for sending and recieving files with
-`<www.filemail.com>`_ written by: Daniel Flehner Heen.
+==========
+pyfilemail
+==========
 
-filemail Pyhton API is built around filemail's
-`official API <http://www.filemail.com/apidoc/ApiDocumentation.aspx>`_
-using `requests <https://github.com/kennethreitz/requests>`_ by Kenneth Reitz.
+Python command line tool and API for sending and recieving files with `<www.filemail.com>`_
+
+pyfilemail uses filemail's `official API <http://www.filemail.com/apidoc/ApiDocumentation.aspx>`_
+and `requests <https://github.com/kennethreitz/requests>`_
+
+Example Usages
+==============
+
+You should register and get an `API KEY <http://www.filemail.com/apidoc/ApiKey.aspx>`_
+to unlock all features and be able to add/delete/update your transfers. 
+You'll be able to send files without registering, but remember to use the "-a | --anonymous" option in the tool.
 
 
-Example Usage
-=============
+Command line
+************
 
-You will need a valid `API-key <http://www.filemail.com/apidoc/ApiKey.aspx>`_
-from filemail and a registered user to be able to send files.
+..  code-block:: bash
+
+    python -m pyfilemail \
+    --subject "Amazing document!" \
+    --message "Have you seen this amazing document?" \
+    --username myemail@somedomain.com \
+    --to lucky.b@receiver.com \
+    --payload /path/to/file.ext /path/to/folder/
+
+Python (outdated)
+*****************
 
 ..  code-block:: python
-
+    
     import filemail
 
     # Login to a Filemail account
