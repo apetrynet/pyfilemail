@@ -1,27 +1,29 @@
 # -*- coding: utf-8 -*-
 from setuptools import setup
 
-import filemail
+import pyfilemail
 
-packages = ['filemail']
+packages = ['pyfilemail']
 
 requires = [
-    'requests'
+    'requests',
+    'appdirs',
+    'keyring
     ]
 
 with open('README') as f:
     long_description = f.read()
 
 setup(
-    name='filemail',
-    version=filemail.__version__,
-    description='Python API for file transfers with www.filemail.com',
+    name='pyfilemail',
+    version=pyfilemail.__version__,
+    description='Python command line tool and API for file transfers with www.filemail.com',
     long_description=long_description,
     author='Daniel Flehner Heen',
-    url='https://github.com/apetrynet/filemail',
+    url='https://github.com/apetrynet/pyfilemail',
     packages=packages,
     package_data={'': ['LICENSE']},
-    package_dir={'filemail': 'filemail'},
+    package_dir={'pyfilemail': 'pyfilemail'},
     license='MIT',
     classifiers=[
         'Development Status :: 3 - Alpha',
