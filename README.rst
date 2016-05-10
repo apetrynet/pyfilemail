@@ -6,9 +6,9 @@ I'm in the middle of a major rewrite so the documentation and some of the method
 pyfilemail
 ==========
 
-Python command line tool and API for sending and recieving files with `<www.filemail.com>`_
+Python command line tool and API for sending and recieving files with `Filemail <https://www.filemail.com>`_
 
-pyfilemail uses filemail's `official API <http://www.filemail.com/apidoc/ApiDocumentation.aspx>`_
+pyfilemail uses filemail's `official API <https://www.filemail.com/apidoc/ApiDocumentation.aspx>`_
 and `requests <https://github.com/kennethreitz/requests>`_
 
 Example Usages
