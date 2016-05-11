@@ -11,7 +11,7 @@ requires = [
     'keyring'
     ]
 
-with open('README') as f:
+with open('README.rst') as f:
     long_description = f.read()
 
 setup(
