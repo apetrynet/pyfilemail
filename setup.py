@@ -8,7 +8,7 @@ packages = ['pyfilemail']
 requires = [
     'requests',
     'appdirs',
-    'keyring
+    'keyring'
     ]
 
 with open('README') as f:
