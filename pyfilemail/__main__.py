@@ -21,9 +21,10 @@ unicodize = lambda s: unicode(s, 'utf-8')
 
 
 def parse_args():
-    description = 'Command line filemail transfer through Python'
+    description = 'Command line Filemail transfer through Python'
+    prog = 'python -m pyfilemail'
 
-    parser = argparse.ArgumentParser(description=description)
+    parser = argparse.ArgumentParser(prog=prog, description=description)
     parser.add_argument('-a',
                         '--anonymous',
                         dest='anonymous',
