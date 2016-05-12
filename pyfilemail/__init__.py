@@ -40,3 +40,7 @@ streamhandler.setLevel(logging.WARNING)
 # Add handler
 logger.addHandler(filehandler)
 logger.addHandler(streamhandler)
+
+
+from users import User  # lint:ok
+from transfer import Transfer  # lint:ok
