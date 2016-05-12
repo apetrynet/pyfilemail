@@ -54,6 +54,17 @@ class Transfer(object):
         else:
             raise FMBaseError('fm_user must be of type "string or User"')
 
+        # Add transfer to user's transfer list
+        self.fm_user.transfers.append(self)
+
+        self._files = []
+
+        self._complete = False
+        self.checksum = checksum
+        self.compress = compress
+        self.config = self.fm_user.config
+        self.session = self.fm_user.session
+
         self.transfer_info = {
             'from': self.fm_user.username,
             'to': self._parse_recipients(to),
@@ -65,12 +76,6 @@ class Transfer(object):
             'password': password
             }
 
-        self._files = []
-        self._complete = False
-        self.checksum = checksum
-        self.compress = compress
-        self.config = self.fm_user.config
-        self.session = self.fm_user.session
         self._initialize()
 
         #if 'status' not in self.transfer_info:
