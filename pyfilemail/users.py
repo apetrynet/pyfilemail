@@ -20,19 +20,19 @@ from errors import hellraiser, FMBaseError
 
 class User():
     """
-    This is the entry point to filemail. You need a valid user to login.
+    This is the entry point to filemail. If you use a registered usenrame you'll
+    need to provide a password to login.
 
-    :param username: `String` with registered filemail username
-    :param apikey: (optional) `String` api key from filemail.com
-    :param password: (optional) `String` users filemail password
-    :param \*\*kwargs: Additional `key=value` pairs with user setings.
-        See :class:`Config` for valid keywords.
+    :param username: your email/username
+    :param password: filename password if registered username is used
+    :type username: str
+    :type password: str
     """
 
     def __init__(self, username, password=None):
 
         self.username = username
-        self._transfers = []
+        self.transfers = []
 
         self.session = Session()
         self.config = self.load_config()
@@ -54,17 +54,26 @@ class User():
     def load_config(self):
         configfile = self.get_configfile()
 
+        if not os.path.exists(configfile):
+            self.save_config()
+
         with open(configfile, 'rb') as f:
             return json.load(f)
 
-    def save_config(self, init=False, configfile=None):
-        if init:
+    def save_config(self):
+        configfile = self.get_configfile()
+
+        if not os.path.exists(configfile):
+            configdir = os.path.dirname(configfile)
+
+            if not os.path.exists(configdir):
+                os.makedirs(configdir)
+
             data = {
                 'apikey': 'GET KEY FROM www.filemail.com/apidoc/ApiKey.aspx'
                 }
 
         else:
-            configfile = self.get_configfile()
             data = self.config
 
         with open(configfile, 'wb') as f:
@@ -74,12 +83,6 @@ class User():
         ad = AppDirs('pyfilemail')
         configdir = ad.user_data_dir
         configfile = os.path.join(configdir, 'pyfilemail.cfg')
-
-        if not os.path.exists(configfile):
-            if not os.path.exists(configdir):
-                os.makedirs(configdir)
-
-            self.save_config(init=True, configfile=configfile)
 
         return configfile
 
@@ -263,13 +266,6 @@ class User():
             transfers.append(Transfer(self, **transfer))
         return transfers
 
-    def getConfig(self):
-        """
-        :returns: The users current :class:`Config` object.
-        """
-
-        return self.config
-
     def getContacts(self):
         """
         :returns: `List` of :class:`Contact` objects for the current user
@@ -300,11 +296,13 @@ class User():
 
     @property
     def logged_in(self):
-        return not self.session.cookies.get('logintoken')
+        return self.session.cookies.get('logintoken') and True or False
 
     def login(self, password):
         """
         Login to filemail as the current user.
+        :param password:
+        :type password: str
         """
 
         method, url = get_URL('login')
@@ -341,24 +339,6 @@ class User():
             return True
 
         raise FMBaseError('You must be logged in')
-
-    def addTransfer(self, transfer):
-        """
-        Add a :class:`Transfer` to an internal list of transfers associated
-        with the users current session.
-
-        :param transfer: :class:`Transfer` object
-        """
-
-        if transfer not in self._transfers:
-            self._transfers.append(transfer)
-
-    def transfers(self):
-        """
-        :returns: `List` of :class:`Transfer` objects.
-        """
-
-        return self._transfers
 
     def updateContact(self, contact, name=None, email=None):
         """
@@ -400,20 +380,13 @@ class User():
         Check if all transfers are completed.
         """
 
-        for transfer in self.transfers():
+        for transfer in self.transfers:
             if not transfer.isComplete():
                 error = {
                     'errorcode': 4003,
                     'errormessage': 'You must complete transfer before logout.'
                     }
                 hellraiser(error)
-
-    def _setLoginState(self, state):
-        """
-        Set login state to ``True`` or ``False``
-        """
-
-        self._logged_in = state
 
 
 class Contact():
