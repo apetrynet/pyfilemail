@@ -1,10 +1,3 @@
-"""
-filemail.users
-~~~~~~~~~~~~~~
-
-Contains :User:, :Contact:, :Group: and :Company: classes
-"""
-
 import os
 import json
 from appdirs import AppDirs
@@ -20,7 +13,7 @@ from errors import hellraiser, FMBaseError
 
 class User():
     """
-    This is the entry point to filemail. If you use a registered usenrame you'll
+    This is the entry point to filemail. If you use a registered username you'll
     need to provide a password to login.
 
     :param username: your email/username
@@ -52,6 +45,10 @@ class User():
             self.session.cookies['logintoken'] = None
 
     def load_config(self):
+        """Load configuration file containing API KEY and other settings.
+        :rtype: str
+        """
+
         configfile = self.get_configfile()
 
         if not os.path.exists(configfile):
@@ -61,6 +58,15 @@ class User():
             return json.load(f)
 
     def save_config(self):
+        """Save configuration file to users data location.
+
+         - Linux: ~/.local/share/pyfilemail
+         - OSX: ~/Library/Application Support/pyfilemail
+         - Windows: C:\\\Users\\\{username}\\\AppData\\\Local\\\pyfilemail
+
+         :rtype: str
+        """
+
         configfile = self.get_configfile()
 
         if not os.path.exists(configfile):
@@ -80,11 +86,98 @@ class User():
             json.dump(data, f, indent=2)
 
     def get_configfile(self):
+        """Return full path to configuration file.
+
+         - Linux: ~/.local/share/pyfilemail
+         - OSX: ~/Library/Application Support/pyfilemail
+         - Windows: C:\\\Users\\\{username}\\\AppData\\\Local\\\pyfilemail
+
+         :rtype: str
+        """
+
         ad = AppDirs('pyfilemail')
         configdir = ad.user_data_dir
         configfile = os.path.join(configdir, 'pyfilemail.cfg')
 
         return configfile
+
+    @property
+    def is_anonymous(self):
+        """:returns: If user is a registered user or not.
+        :rtype: bool
+        """
+
+        return not self.session.cookies.get('logintoken')
+
+    @property
+    def logged_in(self):
+        """:returns: If registered user is logged in or not.
+        :rtype: bool
+        """
+        return self.session.cookies.get('logintoken') and True or False
+
+    def login(self, password):
+        """Login to filemail as the current user.
+        :param password:
+        :type password: str
+        """
+
+        method, url = get_URL('login')
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'username': self.username,
+            'password': password,
+            'source': 'Desktop'
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
+
+    def get_sent(self, expired=False, for_all=False):
+        """Retreve information on previously sent transfers.
+
+        :param expired: Whether or not to return expired transfers.
+        :param for_all: Get transfers for all users.
+         Requires a Filemail Business account.
+        :type for_all: bool
+        :type expired: bool
+        :rtype: ``list`` of :class:`pyfilemail.Transfer` objects
+        """
+
+        if not self.logged_in:
+            raise FMBaseError('Please login to use this method')
+
+        method, url = get_URL('get_sent')
+
+        payload = {
+            'apikey': self.session.cookies.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'getexpired': expired,
+            'getforallusers': for_all
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            transfers = []
+            for transfer_data in res.json()['transfers']:
+                user = transfer_data['from']
+                if user == self.username:
+                    user = self
+
+                transfer = Transfer(user, _restore=True)
+                files = transfer_data.pop('files')
+                transfer._files.extend(files)
+                transfer.transfer_info.update(transfer_data)
+                transfers.append(transfer)
+
+            return transfers
+
+        hellraiser(res.json())
 
     def addContact(self, name, email):
         """
@@ -195,34 +288,6 @@ class User():
         if not res.ok:
             hellraiser(res.json())
 
-    def getSent(self, expired=False):
-        """
-        Retreve information on previously sent transfers.
-
-        :param expired: `Boolean` setting whether or not to return expired
-            transfers.
-        :returns: `List` with :class:`Transfer` objects
-        """
-        self.validateLoginStatus()
-
-        method, url = getURL('sent_get')
-
-        payload = {
-            'apikey': self.config.get('apikey'),
-            'logintoken': self.config.get('logintoken'),
-            'getall': expired
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res.json())
-
-        transfers = list()
-        for transfer in res.json()['transfers']:
-            transfers.append(Transfer(self, **transfer))
-        return transfers
-
     def getReceived(self, age=None, for_all=True):
         """
         This is used to retrieve a list of transfers sent to you or your company
@@ -290,40 +355,8 @@ class User():
             contacts.append(Contact(**contact))
         return contacts
 
-    @property
-    def is_anonymous(self):
-        return not self.session.cookies.get('logintoken')
-
-    @property
-    def logged_in(self):
-        return self.session.cookies.get('logintoken') and True or False
-
-    def login(self, password):
-        """
-        Login to filemail as the current user.
-        :param password:
-        :type password: str
-        """
-
-        method, url = get_URL('login')
-        payload = {
-            'apikey': self.config.get('apikey'),
-            'username': self.username,
-            'password': password,
-            'source': 'Desktop'
-            }
-
-        res = getattr(self.session, method)(url, params=payload)
-
-        if res.status_code == 200:
-            return True
-
-        hellraiser(res)
-
     def logout(self):
-        """
-        Logout of filemail and closing the session.
-        """
+        """Logout of filemail and closing the session."""
 
         self.checkAllTransfers()
 
