@@ -12,25 +12,28 @@ from errors import hellraiser, FMBaseError, FMFileError
 
 
 class Transfer(object):
-    """
-    The Transfer object is the gateway to sending and recieving files through
-    filemail.com.
+    """This is is the gateway to sending and recieving files through filemail.
 
-    :param user: `User` object with valid login status
-    :param \*\*kwargs: (optional) additional arguments for the transfer.
-
-    `\*\*kwargs` may contain:
-        * `to` (email/username)
-        * `subject`
-        * `message`
-        * `signature`
-        * `notify` (`Boolean` notify when recipients download files)
-        * `confirmation` (`Boolean` confirm when finished uploading)
-        * `days` (`Int` days available for download)
-        * `password` (for recipients to enter for download access)
-
-    Recipient(s) and other info can be updated with the :func:`update` method at
-    a later stage.
+    :param fm_user: username
+    :param to: recipient(s)
+    :param subject:
+    :param message:
+    :param notify: Notify when recipient(s) download files
+    :param confirmation: Receive confirmation email when files are uploaded
+    :param days: Number of days files are available for download
+    :param password: Protect download with given password
+    :param checksum: Create checksum of added files (a bit slower process)
+    :param compress: Compress files in a zip file before sending
+    :type compress: bool
+    :type checksum: bool
+    :type password: str, unicode
+    :type days: int
+    :type confirmation: bool
+    :type notify: bool
+    :type message: str, unicode
+    :type fm_user: :class:`pyfilemail.User`, str
+    :type to: str, list
+    :type subject: str, unicode
     """
 
     def __init__(self,
@@ -43,7 +46,8 @@ class Transfer(object):
                  days=3,
                  password=None,
                  checksum=True,
-                 compress=False):
+                 compress=False,
+                 _restore=False):
 
         if isinstance(fm_user, basestring):
             self.fm_user = users.User(fm_user)
@@ -76,14 +80,45 @@ class Transfer(object):
             'password': password
             }
 
-        self._initialize()
+        if not _restore:
+            self._initialize()
 
-        #if 'status' not in self.transfer_info:
-            #self.transfer_info.update(self._initialize())
+    def _initialize(self):
+        """Initialize transfer."""
 
-        #self.transferid = self.getTransferID()
+        payload = {
+            'apikey': self.session.cookies.get('apikey'),
+            'source': self.session.cookies.get('source')
+            }
+
+        if self.fm_user.logged_in:
+            payload['logintoken'] = self.session.cookies.get('logintoken')
+
+        payload.update(self.transfer_info)
+
+        method, url = get_URL('init')
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            for key in ['transferid', 'transferkey', 'transferurl']:
+                self.transfer_info[key] = res.json().get(key)
+
+        else:
+            hellraiser(res)
 
     def _parse_recipients(self, to):
+        """Make sure we have a "," separated list of recipients
+
+        :param to: Recipient(s)
+        :type to: (str,
+                   list,
+                   :class:`pyfilemail.Contact`,
+                   :class:`pyfilemail.Group`
+                   )
+        :rtype: ``str``
+        """
+
         if to is None:
             return None
 
@@ -111,10 +146,12 @@ class Transfer(object):
         return ', '.join(recipients)
 
     def add_files(self, files):
-        """
-        Add multiple files.
+        """Add files and/or folders to transfer.
+        If :class:`Transfer.compress` attribute is set to ``True``, files
+        will get packed into a zip file before sending.
 
-        :param files: `List` of paths to files
+        :param files: Files or folders to send
+        :type files: str, list
         """
 
         if isinstance(files, basestring):
@@ -140,7 +177,7 @@ class Transfer(object):
                         else:
                             fmfile = self.get_file_specs(filepath,
                                                          keep_folders=True)
-                            if fmfile['totalzize'] > 0:
+                            if fmfile['totalsize'] > 0:
                                 self._files.append(fmfile)
 
             else:
@@ -159,11 +196,23 @@ class Transfer(object):
 
     @property
     def files(self):
-        """:returns: `List` of files related to Transfer"""
+        """:returns: List of files/folders added to transfer
+
+        :rtype: ``list``
+        """
 
         return self._files
 
     def get_file_specs(self, filepath, keep_folders=False):
+        """Gather information on files needed for valid transfer.
+
+        :param filepath: Path to file in question
+        :param keep_folders: Whether or not to maintain folder structure
+        :type keep_folders: bool
+        :type filepath: str, unicode
+        :rtype: ``dict``
+        """
+
         path, filename = os.path.split(filepath)
 
         fileid = str(uuid4()).replace('-', '')
@@ -188,10 +237,72 @@ class Transfer(object):
         return specs
 
     def _get_zip_filename(self):
+        """Create a filename for zip file when :class:Transfer.compress is
+        set to ``True``
+
+        :rtype: str
+        """
+
         date = datetime.datetime.now().strftime('%Y_%m_%d-%H%M%S')
         zip_file = 'filemail_transfer_{date}.zip'.format(date=date)
 
         return zip_file
+
+    def send(self, auto_complete=True):
+        """Begin uploading file(s) and sending email(s).
+        If `auto_complete` is set to ``False`` you will have to call the
+        :func:`Transfer.complete` function at a later stage.
+
+        :param auto_complete: Whether or not to mark transfer as complete
+         and send emails to recipient(s)
+        :type auto_complete: ``bool``
+        """
+
+        # TODO: Figure out a way to reimplement callback function and progress.
+        tot = len(self.files)
+        url = self.transfer_info['transferurl']
+
+        for index, fmfile in enumerate(self.files):
+            msg = 'Uploading: "{filename}" ({cur}/{tot})'
+            logger.info(
+                msg.format(
+                    filename=fmfile['thefilename'],
+                    cur=index + 1,
+                    tot=tot)
+                )
+
+            with open(fmfile['filepath'], 'rb') as f:
+                res = self.session.post(url, params=fmfile, data=f)
+
+            res.text
+
+            if res.status_code != 200:
+                hellraiser(res)
+
+        if auto_complete:
+            return self.complete()
+
+        return res
+
+    def complete(self):
+        """Completes the transfer and shoots off email(s) to recipient(s)."""
+
+        method, url = get_URL('complete')
+
+        payload = {
+            'apikey': self.session.cookies.get('apikey'),
+            'transferid': self.transfer_info['transferid'],
+            'transferkey': self.transfer_info['transferkey']
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code != 200:
+            hellraiser(res)
+
+        self._complete = True
+
+        return res
 
     def download(self, files, destination, callback=None):
         """
@@ -256,72 +367,6 @@ class Transfer(object):
             transferid = self.transfer_info.get('id')
 
         return transferid
-
-    def send(self, callback=None, auto_complete=True):
-        """
-        Begin uploading file(s) and sending email(s).
-
-        :param callback: pass instance of callback function that will receive a
-            percentage of file transfered
-        :param auto_complete: `Boolean` settinng wheter or not to auto complete
-            transfer after upload.
-
-        If `auto_complete` is set to ``False`` you will have to call the
-        :func:`complete` function
-        at a later stage.
-        """
-
-        # TODO: Figure out a way to reimplement callback function and progress.
-        tot = len(self.files)
-        url = self.transfer_info['transferurl']
-
-        for index, fmfile in enumerate(self.files):
-            msg = 'Uploading: "{filename}" ({cur}/{tot})'
-            logger.info(
-                msg.format(
-                    filename=fmfile['thefilename'],
-                    cur=index + 1,
-                    tot=tot)
-                )
-
-            with open(fmfile['filepath'], 'rb') as f:
-                res = self.session.post(url, params=fmfile, data=f)
-
-            res.text
-
-            if res.status_code != 200:
-                hellraiser(res)
-
-        if auto_complete:
-            return self.complete(keep_transfer_key=True)
-
-        return res
-
-    def complete(self, keep_transfer_key=False):
-        """
-        Completes the transfer and shoots off email(s) to recipients.
-
-        :param keep_transfer_key: `Boolean` setting whether or not to keep the
-            transfer key. This is needed for the :func:`update`
-        """
-
-        method, url = get_URL('complete')
-
-        payload = {
-            'apikey': self.session.cookies.get('apikey'),
-            'transferid': self.transfer_info['transferid'],
-            'transferkey': self.transfer_info['transferkey'],
-            'keep_transfer_key': keep_transfer_key
-            }
-
-        res = getattr(self.session, method)(url, params=payload)
-
-        if res.status_code != 200:
-            hellraiser(res)
-
-        self._complete = True
-
-        return res
 
     def isComplete(self):
         """:returns: `Boolean` `True` if transfer is complete"""
@@ -558,29 +603,6 @@ class Transfer(object):
             hellraiser(res.json())
 
         self._complete = True
-
-    def _initialize(self):
-        """Initialize transfer."""
-
-        payload = {
-            'apikey': self.session.cookies.get('apikey'),
-            'source': self.session.cookies.get('source')
-            }
-
-        if self.fm_user.logged_in:
-            payload['logintoken'] = self.session.cookies.get('logintoken')
-
-        payload.update(self.transfer_info)
-
-        method, url = get_URL('init')
-
-        res = getattr(self.session, method)(url, params=payload)
-        if res.status_code == 200:
-            for key in ['transferid', 'transferkey', 'transferurl']:
-                self.transfer_info[key] = res.json().get(key)
-
-        else:
-            hellraiser(res)
 
     def __repr__(self):
         return repr(self.transfer_info)
