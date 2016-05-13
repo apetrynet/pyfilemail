@@ -75,7 +75,8 @@ def parse_args():
                         dest='message',
                         action='store',
                         type=unicodize,
-                        default='Files sent with filemail.py',
+                        default='Sent with \
+https://github.com/apetrynet/pyfilemail',
                         help='Message to the recipient(s) of the transfer')
 
     parser.add_argument('--notify',
