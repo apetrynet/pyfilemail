@@ -170,9 +170,8 @@ class User():
                     user = self
 
                 transfer = Transfer(user, _restore=True)
-                files = transfer_data.pop('files')
-                transfer._files.extend(files)
                 transfer.transfer_info.update(transfer_data)
+                transfer.get_files()
                 transfers.append(transfer)
 
             return transfers
