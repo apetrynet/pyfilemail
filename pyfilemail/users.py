@@ -3,12 +3,29 @@ import json
 from appdirs import AppDirs
 from calendar import timegm
 from datetime import datetime, timedelta
+from functools import wraps
 from requests import Session
 
 from pyfilemail import logger
 from urls import get_URL
 from transfer import Transfer
 from errors import hellraiser, FMBaseError
+
+
+def login_required(f):
+    """Check if user is loged in.
+    :raises: :class:`FMBaseError` if not logged in
+    """
+
+    wraps(f)
+
+    def check_login(cls, *args, **kwargs):
+        if not cls.logged_in:
+            raise FMBaseError('Please login to use this method')
+
+        return f(cls, *args, **kwargs)
+
+    return check_login
 
 
 class User():
@@ -137,6 +154,40 @@ class User():
 
         hellraiser(res)
 
+    @login_required
+    def logout(self):
+        """Logout of filemail and closing the session."""
+
+        # Check if all transfers are complete before logout
+        self.transfers_complete
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken')
+            }
+
+        method, url = get_URL('logout')
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            self.session.cookies['logintoken'] = None
+            return True
+
+        hellraiser(res)
+
+    @property
+    def transfers_complete(self):
+        """Check if all transfers are completed."""
+
+        for transfer in self.transfers:
+            if not transfer.is_complete:
+                error = {
+                    'errorcode': 4003,
+                    'errormessage': 'You must complete transfer before logout.'
+                    }
+                hellraiser(error)
+
+    @login_required
     def get_sent(self, expired=False, for_all=False):
         """Retreve information on previously sent transfers.
 
@@ -148,9 +199,6 @@ class User():
         :rtype: ``list`` of :class:`pyfilemail.Transfer` objects
         """
 
-        if not self.logged_in:
-            raise FMBaseError('Please login to use this method')
-
         method, url = get_URL('get_sent')
 
         payload = {
@@ -158,6 +206,103 @@ class User():
             'logintoken': self.session.cookies.get('logintoken'),
             'getexpired': expired,
             'getforallusers': for_all
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            transfers = []
+            for transfer_data in res.json()['transfers']:
+                user = transfer_data['from']
+                if user == self.username:
+                    user = self
+
+                transfer = Transfer(user, _restore=True)
+                transfer.transfer_info.update(transfer_data)
+                transfer.get_files()
+                transfers.append(transfer)
+
+            return transfers
+
+        hellraiser(res.json())
+
+    @login_required
+    def get_user_info(self, save_to_config=True):
+        """Get user info and settings from Filemail.
+
+        :param save_to_config: Whether or not to save settings to config file
+        :type save_to_config: ``bool``
+        :rtype: ``dict`` containig user information and default settings.
+        """
+
+        method, url = get_URL('user_get')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken')
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            settings = res.json()['user']
+
+            if save_to_config:
+                self.config.update(settings)
+
+            return settings
+
+        hellraiser(res)
+
+    @login_required
+    def update_user_info(self, **kwargs):
+        """Update user info and settings.
+
+        :param **kwargs: settings to be merged with :func:`User.get_configfile`
+         setings and sent to Filemail.
+        :rtype: ``bool``
+        """
+
+        if kwargs:
+            self.config.update(kwargs)
+
+        method, url = get_URL('user_update')
+
+        res = getattr(self.session, method)(url, params=self.config)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def get_received_files(self, age=None, for_all=True):
+        """Retrieve a list of transfers sent to you or your company
+         from other people.
+
+        :param age: between 1 and 90 days.
+        :param for_all: If ``True`` will return received files for
+         all users in the same business. (Available for business account
+         members only).
+        :type age: ``int``
+        :type for_all: ``bool``
+        :rtype: ``list`` of :class:`Transfer` objects.
+        """
+
+        method, url = get_URL('received_get')
+
+        if age:
+            if not isinstance(age, int) or age < 0 or age > 90:
+                raise FMBaseError('Age must be <int> between 0-90')
+
+            past = datetime.utcnow() - timedelta(days=age)
+            age = timegm(past.utctimetuple())
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'getForAllUsers': for_all,
+            'from': age
             }
 
         res = getattr(self.session, method)(url, params=payload)
@@ -236,100 +381,6 @@ class User():
         if not res.ok:
             hellraiser(res.json())
 
-    def getInfo(self):
-        """
-        :returns: :class:`Config` object containig user
-            information and default settings.
-        """
-
-        #: Fail if user not logged in
-        self.validateLoginStatus()
-
-        method, url = getURL('user_get')
-
-        payload = {
-            'apikey': self.config.get('apikey'),
-            'logintoken': self.config.get('logintoken')
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res.json())
-
-        return Config(self.username, **res.json()['user'])
-
-    def updateUserInfo(self, info=None):
-        """
-        Update user information and settings.
-
-        :param info: (optional) `Dictionary` or :class:`Config` object
-            containing information.
-
-        If no info is passed the current config is sent.
-
-        """
-
-        self.validateLoginStatus()
-
-        if info is not None:
-            if isinstance(info, Config):
-                info = info.dump()
-
-            self.config.update(info)
-
-        method, url = getURL('user_update')
-
-        res = self.session.send(method=method,
-                                url=url,
-                                params=self.config.dump())
-
-        if not res.ok:
-            hellraiser(res.json())
-
-    def getReceived(self, age=None, for_all=True):
-        """
-        This is used to retrieve a list of transfers sent to you or your company
-        from other people.
-
-        :param age: `Integer` between 1 and 90 days.
-        :param for_all: `Boolean` if ``True`` will return received files for
-            all users in the same business. (Available for business account
-            members only).
-        :returns: List of :class:`Transfer` objects.
-
-        Retrieving files is only available for users with an
-        `business account <http://www.filemail.com>`_.
-
-        """
-        self.validateLoginStatus()
-
-        method, url = getURL('received_get')
-
-        if age:
-            if not isinstance(age, int) or age < 0 or age > 90:
-                raise FMBaseError('Age must be integer between 0-90')
-
-            past = datetime.utcnow() - timedelta(days=age)
-            age = timegm(past.utctimetuple())
-
-        payload = {
-            'apikey': self.config.get('apikey'),
-            'logintoken': self.config.get('logintoken'),
-            'getForAllUsers': for_all,
-            'from': age
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res.json())
-
-        transfers = list()
-        for transfer in res.json()['transfers']:
-            transfers.append(Transfer(self, **transfer))
-        return transfers
-
     def getContacts(self):
         """
         :returns: `List` of :class:`Contact` objects for the current user
@@ -353,24 +404,6 @@ class User():
         for contact in res.json()['contacts']:
             contacts.append(Contact(**contact))
         return contacts
-
-    def logout(self):
-        """Logout of filemail and closing the session."""
-
-        self.checkAllTransfers()
-
-        state = self.session.logout()
-        self._setLoginState(state)
-
-    def validateLoginStatus(self):
-        """
-        Check if user is propperly loged in.
-        """
-
-        if self._logged_in:
-            return True
-
-        raise FMBaseError('You must be logged in')
 
     def updateContact(self, contact, name=None, email=None):
         """
@@ -406,19 +439,6 @@ class User():
 
         if not res.ok:
             hellraiser(res.json())
-
-    def checkAllTransfers(self):
-        """
-        Check if all transfers are completed.
-        """
-
-        for transfer in self.transfers:
-            if not transfer.isComplete():
-                error = {
-                    'errorcode': 4003,
-                    'errormessage': 'You must complete transfer before logout.'
-                    }
-                hellraiser(error)
 
 
 class Contact():
