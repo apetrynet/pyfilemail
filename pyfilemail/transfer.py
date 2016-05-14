@@ -329,6 +329,12 @@ class Transfer(object):
 
         return res
 
+    @property
+    def is_complete(self):
+        """:rtype: ``bool`` ``True`` if transfer is complete"""
+
+        return self._complete
+
     def download(self, files, destination, callback=None):
         """
         Download file or files.
@@ -392,11 +398,6 @@ class Transfer(object):
             transferid = self.transfer_info.get('id')
 
         return transferid
-
-    def isComplete(self):
-        """:returns: `Boolean` `True` if transfer is complete"""
-
-        return self._complete
 
     def update(self, **kwargs):
         """
