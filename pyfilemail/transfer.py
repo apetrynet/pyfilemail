@@ -236,6 +236,31 @@ class Transfer(object):
 
         return specs
 
+    def get_files(self):
+        """Get information on file in transfer from Filemail.
+        :rtype: ``list`` of files
+        """
+
+        method, url = get_URL('get')
+        payload = {
+            'apikey': self.session.cookies.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'transferid': self.transfer_info.get('id'),
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            transfer_data = res.json()['transfer']
+            files = transfer_data['files']
+
+            for file_data in files:
+                self._files.append(file_data)
+
+            return self.files
+
+        hellraiser(res)
+
     def _get_zip_filename(self):
         """Create a filename for zip file when :class:Transfer.compress is
         set to ``True``
@@ -522,35 +547,6 @@ class Transfer(object):
 
         if not res.ok:
             hellraiser(res.json())
-
-    def getFiles(self):
-        """
-        Get `List` of :class:`FMFile` objects for the current transfer.
-
-        :returns: `List` of :class:`FMFile` objects
-
-        """
-
-        method, url = getURL('get')
-
-        payload = {
-            'apikey': self.session.cookies.get('apikey'),
-            'transferid': self.transferid,
-            'logintoken': self.config.get('logintoken')
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res.json())
-
-        self.transfer_info.update(res.json())
-        files = self.transfer_info['transfer']['files']
-
-        for file_data in files:
-            self.addFile(FMFile(data=file_data))
-
-        return self.files()
 
     def renameFile(self, fmfile, filename):
         """
