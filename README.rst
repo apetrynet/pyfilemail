@@ -66,40 +66,42 @@ Command line help
       --payload PAYLOAD [PAYLOAD ...]
                             File(s) and/or folder(s) to transfer
 
-Python (outdated)
-*****************
+Python API example
+******************
 
 ..  code-block:: python
 
-    import filemail
+    import pyfilemail
 
     # Login to a Filemail account
-    user = filemail.login(username='user@mailprovider.com',
-                          apikey='YOUR-APIKEY-FROM-FILEMAIL-GOES-HERE',
-                          password='YourSecretPassword2014')
+    user = pyfilemail.User(username='user@mailprovider.com',
+                           password='YourSecretPassword2014')
+
+    # List all prior transfers
+    transfers = user.get_sent()
 
     # Setup a transfer
-    transfer = filemail.Transfer(user,
-                                 to='lucky@recipient.com',
-                                 subject='My BIG file no email can handle',
-                                 message='You will not belive the speed of this download!',
-                                 notify=True,
-                                 confirmation=True,
-                                 days=7,
-                                 password='JuSt2BeSaf£')
+    transfer = pyfilemail.Transfer(user,
+                                   to='lucky@recipient.com',
+                                   subject='My BIG file no email can handle',
+                                   message='You will not belive the speed of this download!',
+                                   notify=True,
+                                   confirmation=True,
+                                   days=7,
+                                   password='JuSt2BeSaf£')
 
     # Add a single file to queue
-    transfer.addFile('/path/to/my/BIG_file.ext')
+    transfer.add_files('/path/to/my/BIG_file.ext')
 
     # Add multiple files
     list_of_files = ['/path/to/my/BIG_file_1.ext',
                      '/path/to/my/BIG_file_2.ext',
                      '/path/to/my/BIG_file_3.ext']
 
-    transfer.addFiles(list_of_files)
+    transfer.add_files(list_of_files)
 
     # Send files to recipient(s)
-    transfer.send(callback=myCallbackFunction, auto_complete=True)
+    transfer.send(auto_complete=True)
 
     # Logout
     user.logout()
