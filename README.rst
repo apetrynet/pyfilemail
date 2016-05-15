@@ -66,8 +66,8 @@ Command line help
       --payload PAYLOAD [PAYLOAD ...]
                             File(s) and/or folder(s) to transfer
 
-Python API example
-******************
+Python API examples
+*******************
 
 ..  code-block:: python
 
@@ -78,7 +78,7 @@ Python API example
                            password='YourSecretPassword2014')
 
     # List all prior transfers
-    transfers = user.get_sent()
+    transfers = user.get_sent(expired=True)
 
     # Setup a transfer
     transfer = pyfilemail.Transfer(user,
@@ -90,7 +90,7 @@ Python API example
                                    days=7,
                                    password='JuSt2BeSaf£')
 
-    # Add a single file to queue
+    # Add a single file to transfer queue
     transfer.add_files('/path/to/my/BIG_file.ext')
 
     # Add multiple files
@@ -102,6 +102,20 @@ Python API example
 
     # Send files to recipient(s)
     transfer.send(auto_complete=True)
+
+    # Get contacts
+    user.get_contatcts()
+
+    # Get one single contact
+    contact = user.get_contact('contact@email.address.com')
+
+    # Update that contact
+    contact['name'] = 'Mr. Orange'
+    user.update_contact(contact)
+
+    # Delete contact
+    unfriendly = user.get_contact('contact@email.address.com')
+    user.delete_contact(unfriendly)
 
     # Logout
     user.logout()
