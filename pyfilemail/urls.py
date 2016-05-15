@@ -1,4 +1,3 @@
-import os
 from errors import FMConfigError
 
 
@@ -38,7 +37,7 @@ api_urls = {
 def get_URL(action):
     if action in api_urls:
         method, url = api_urls[action]
-        url = os.path.join(base_url, url)
+        url = '/'.join((base_url, url))
         return method, url
 
     raise FMConfigError('You passed an invalid action: {}'.format(action))
