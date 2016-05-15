@@ -14,11 +14,11 @@ from errors import hellraiser, FMBaseError
 
 def login_required(f):
     """Check if user is loged in.
+
     :raises: :class:`FMBaseError` if not logged in
     """
 
-    wraps(f)
-
+    @wraps(f)
     def check_login(cls, *args, **kwargs):
         if not cls.logged_in:
             raise FMBaseError('Please login to use this method')
@@ -29,9 +29,9 @@ def login_required(f):
 
 
 class User():
-    """
-    This is the entry point to filemail. If you use a registered username you'll
-    need to provide a password to login.
+    """This is the entry point to filemail.
+     If you use a registered username you'll need to provide
+     a password to login.
 
     :param username: your email/username
     :param password: filename password if registered username is used
@@ -63,6 +63,7 @@ class User():
 
     def load_config(self):
         """Load configuration file containing API KEY and other settings.
+
         :rtype: str
         """
 
@@ -120,7 +121,8 @@ class User():
 
     @property
     def is_anonymous(self):
-        """:returns: If user is a registered user or not.
+        """If user is a registered user or not.
+
         :rtype: bool
         """
 
@@ -128,15 +130,17 @@ class User():
 
     @property
     def logged_in(self):
-        """:returns: If registered user is logged in or not.
+        """If registered user is logged in or not.
+
         :rtype: bool
         """
         return self.session.cookies.get('logintoken') and True or False
 
     def login(self, password):
         """Login to filemail as the current user.
+
         :param password:
-        :type password: str
+        :type password: ``str``
         """
 
         method, url = get_URL('login')
@@ -211,18 +215,7 @@ class User():
         res = getattr(self.session, method)(url, params=payload)
 
         if res.status_code == 200:
-            transfers = []
-            for transfer_data in res.json()['transfers']:
-                user = transfer_data['from']
-                if user == self.username:
-                    user = self
-
-                transfer = Transfer(user, _restore=True)
-                transfer.transfer_info.update(transfer_data)
-                transfer.get_files()
-                transfers.append(transfer)
-
-            return transfers
+            return self._restore_transfers(res)
 
         hellraiser(res.json())
 
@@ -308,176 +301,147 @@ class User():
         res = getattr(self.session, method)(url, params=payload)
 
         if res.status_code == 200:
-            transfers = []
-            for transfer_data in res.json()['transfers']:
-                user = transfer_data['from']
-                if user == self.username:
-                    user = self
+            return self._restore_transfers(res)
 
-                transfer = Transfer(user, _restore=True)
-                transfer.transfer_info.update(transfer_data)
-                transfer.get_files()
-                transfers.append(transfer)
+        hellraiser(res)
 
-            return transfers
-
-        hellraiser(res.json())
-
-    def addContact(self, name, email):
-        """
-        :param name: `String` with name of contact
-        :param email: `String` with vaild email for contact
-        :returns: :class:`Contact` object for new current user
+    def _restore_transfers(self, response):
+        """Restore transfers from josn retreived Filemail
+        :param response: response object from request
+        :rtype: ``list`` with :class:`Transfer` objects
         """
 
-        self.validateLoginStatus()
+        transfers = []
+        for transfer_data in response.json()['transfers']:
+            user = transfer_data['from']
+            if user == self.username:
+                user = self
 
-        if not validString(name):
-            raise AttributeError('`name` must be a <str> or <unicode>')
+            transfer = Transfer(user, _restore=True)
+            transfer.transfer_info.update(transfer_data)
+            transfer.get_files()
+            transfers.append(transfer)
 
-        if not validEmail(email):
-            raise AttributeError('Not a valid email')
+        return transfers
 
-        method, url = getURL('contacts_add')
+    @login_required
+    def get_contacts(self):
+        """Get contacts from Filemail. Usually people you've sent files
+         to in the past.
+        :rtype: ``list`` of ``dict`` objects containing contact information
+        """
+
+        method, url = get_URL('contacts_get')
 
         payload = {
             'apikey': self.config.get('apikey'),
-            'logintoken': self.config.get('logintoken'),
+            'logintoken': self.session.cookies.get('logintoken')
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return res.json()['contacts']
+
+        hellraiser(res)
+
+    @login_required
+    def get_contact(self, email):
+        """Get Filemail contact based on email.
+
+        :param email: address of contact
+        :type email: ``str``, ``unicode``
+        :rtype: ``dict`` with contact information
+        """
+
+        contacts = self.get_contacts()
+        for contact in contacts:
+            if contact['email'] == email:
+                return contact
+
+        msg = 'No contact with email: "{email}" found.'
+        raise FMBaseError(msg.format(email=email))
+
+    @login_required
+    def update_contact(self, contact):
+        """Update name and/or email for contact.
+
+        :param contact: with updated info
+        :type contact: ``dict``
+        :rtype: ``bool``
+        """
+
+        if not isinstance(contact, dict):
+            raise AttributeError('contact must be a <dict>')
+
+        method, url = get_URL('contacts_update')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'contactid': contact.get('contactid'),
+            'name': contact.get('name'),
+            'email': contact.get('email')
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def add_contact(self, name, email):
+        """Add new contact.
+
+        :param name: name of contact
+        :param email: email of contact
+        :type name: ``str``, ``unicode``
+        :type email: ``str``, ``unicode``
+        :returns: contact information for new current user
+        :rtype: ``dict``
+        """
+
+        method, url = get_URL('contacts_add')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
             'name': name,
             'email': email
             }
 
-        res = self.session.send(method=method, url=url, params=payload)
+        res = getattr(self.session, method)(url, params=payload)
 
-        if not res.ok:
-            hellraiser(res.json())
+        if res.status_code == 200:
+            return res.json()['contact']
 
-        contact = res.json()['contact']
+        hellraiser(res)
 
-        return Contact(**contact)
+    @login_required
+    def delete_contact(self, contact):
+        """Delete contact.
 
-    def deleteContact(self, contact):
+        :param contact: with `contactid`
+        :type contact: ``dict``
+        :rtype: ``bool``
         """
-        Delete contact.
 
-        :param comtact: :class:`Comtact`
-        """
+        if not isinstance(contact, dict):
+            raise AttributeError('contact must be a <dict>')
 
-        self.validateLoginStatus()
-
-        if not isinstance(contact, Contact):
-            raise AttributeError('contact must be a <Contact> instance')
-
-        method, url = getURL('contacts_delete')
+        method, url = get_URL('contacts_delete')
 
         payload = {
             'apikey': self.config.get('apikey'),
-            'logintoken': self.config.get('logintoken'),
+            'logintoken': self.session.cookies.get('logintoken'),
             'contactid': contact.get('contactid')
             }
 
-        res = self.session.send(method=method, url=url, params=payload)
+        res = getattr(self.session, method)(url, params=payload)
 
-        if not res.ok:
-            hellraiser(res.json())
+        if res.status_code == 200:
+            return True
 
-    def getContacts(self):
-        """
-        :returns: `List` of :class:`Contact` objects for the current user
-        """
-
-        self.validateLoginStatus()
-
-        method, url = getURL('contacts_get')
-
-        payload = {
-            'apikey': self.config.get('apikey'),
-            'logintoken': self.config.get('logintoken')
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res.json())
-
-        contacts = list()
-        for contact in res.json()['contacts']:
-            contacts.append(Contact(**contact))
-        return contacts
-
-    def updateContact(self, contact, name=None, email=None):
-        """
-        Update name and/or email for contact.
-
-        :param contact: :class:`Contact` instance to change
-        :param name: `String` with updated name
-        :param email: `Stinng` with updated email
-        """
-
-        self.validateLoginStatus()
-
-        if not isinstance(contact, Contact):
-            raise AttributeError('contact must be a <Contact> instance')
-
-        if name is not None and not validString(name):
-            raise AttributeError('`name` must be a <str> or <unicode>')
-
-        if email is not None and not validEmail(email):
-            raise AttributeError('Not a valid email')
-
-        method, url = getURL('contacts_update')
-
-        payload = {
-            'apikey': self.config.get('apikey'),
-            'logintoken': self.config.get('logintoken'),
-            'contactid': contact.get('contactid'),
-            'name': name or contact.get('name'),
-            'email': email or contact.get('email')
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res.json())
-
-
-class Contact():
-
-    def __init__(self, **kwargs):
-        self._data = kwargs
-
-    def get(self, key):
-        if key in self._data:
-            return self._data[key]
-
-        return None
-
-    def set(self, key, value):
-        self._data[key] = value
-
-    def __repr__(self):
-        return repr(self._data)
-
-
-class Group():
-
-    def __init__(self, **kwargs):
-        self._data = kwargs
-
-    def get(self, key):
-        if key in self._data:
-            return self._data[key]
-
-        return None
-
-    def set(self, key, value):
-        self._data[key] = value
-
-    def __repr__(self):
-        return repr(self._data)
-
-
-class Company():
-
-    def __init__(self):
-        raise NotImplemented
+        hellraiser(res)
