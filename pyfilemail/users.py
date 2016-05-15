@@ -31,7 +31,9 @@ def login_required(f):
 class User():
     """This is the entry point to filemail.
      If you use a registered username you'll need to provide
-     a password to login.
+     a password to login. This should get provided and passed without
+     storing/displaying it in plain text. Use python's built in
+     :func:`getpass.getpass` for instance
 
     :param username: your email/username
     :param password: filename password if registered username is used
@@ -251,8 +253,8 @@ class User():
     def update_user_info(self, **kwargs):
         """Update user info and settings.
 
-        :param **kwargs: settings to be merged with :func:`User.get_configfile`
-         setings and sent to Filemail.
+        :param \*\*kwargs: settings to be merged with
+         :func:`User.get_configfile` setings and sent to Filemail.
         :rtype: ``bool``
         """
 
@@ -328,6 +330,7 @@ class User():
     def get_contacts(self):
         """Get contacts from Filemail. Usually people you've sent files
          to in the past.
+
         :rtype: ``list`` of ``dict`` objects containing contact information
         """
 
