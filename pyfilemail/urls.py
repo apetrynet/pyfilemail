@@ -27,7 +27,7 @@ api_urls = {
     'contacts_delete': ['get', 'api/contacts/delete'],
     'contacts_add_to_group': ['get', 'api/contacts/addtogroup'],
     'contacts_remove_from_group': ['get', 'api/contacts/removefromgroup'],
-    'group_get': ['get', 'api/contacts/group/get'],
+    'groups_get': ['get', 'api/contacts/group/get'],
     'group_add': ['get', 'api/contacts/group/add'],
     'group_update': ['get', 'api/contacts/group/update'],
     'group_delete': ['get', 'api/contacts/group/delete']
