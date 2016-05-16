@@ -28,7 +28,7 @@ def login_required(f):
     return check_login
 
 
-class User():
+class User(object):
     """This is the entry point to filemail.
      If you use a registered username you'll need to provide
      a password to login. This should get provided and passed without
@@ -62,6 +62,10 @@ class User():
         else:
             self.session.cookies['source'] = 'web'
             self.session.cookies['logintoken'] = None
+
+        #TODO: use these as caches to avoid too many calls home
+        #self._contacts = {}
+        #self._groups = {}
 
     def load_config(self):
         """Load configuration file containing API KEY and other settings.
@@ -440,6 +444,190 @@ class User():
             'apikey': self.config.get('apikey'),
             'logintoken': self.session.cookies.get('logintoken'),
             'contactid': contact.get('contactid')
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def get_groups(self):
+        """Get contact groups
+
+        :rtype: ``list`` of ``dict`` with group data
+        """
+
+        method, url = get_URL('groups_get')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken')
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return res.json()['groups']
+
+        hellraiser(res)
+
+    @login_required
+    def get_group(self, name):
+        """Get contact group by name
+
+        :param name: name of group
+        :type name: ``str``, ``unicode``
+        :rtype: ``dict`` with group data
+        """
+
+        groups = self.get_groups()
+        for group in groups:
+            if group['contactgroupname'] == name:
+                return group
+
+        msg = 'No group named: "{name}" found.'
+        raise FMBaseError(msg.format(name=name))
+
+    @login_required
+    def add_group(self, name):
+        """Add new contact group
+
+        :param name: name of new group
+        :type name: ``str``, ``unicode``
+        :rtype: ``dict`` with group data
+        """
+
+        method, url = get_URL('group_add')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'name': name
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return res.json()['groups']
+
+        hellraiser(res)
+
+    @login_required
+    def delete_group(self, name):
+        """Delete contact group
+
+        :param name: of group
+        :type name: ``str``, ``unicode``
+        :rtype: ``bool``
+        """
+
+        group = self.get_group(name)
+
+        method, url = get_URL('group_delete')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'contactgroupid': group['contactgroupid']
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def rename_group(self, group, newname):
+        """Rename contact group
+
+        :param group: group data or name of group
+        :param newname: of group
+        :type group: ``str``, ``unicode``, ``dict``
+        :type newname: ``str``, ``unicode``
+        :rtype: ``bool``
+        """
+
+        if isinstance(group, basestring):
+            group = self.get_contact(group)
+
+        method, url = get_URL('group_update')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'contactgroupid': group['contactgroupid'],
+            'name': newname
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def add_contact_to_group(self, contact, group):
+        """Add contact to group
+
+        :param contact: name or contact object
+        :param group: name or group object
+        :type contact: ``str``, ``unicode``, ``dict``
+        :type group: ``str``, ``unicode``, ``dict``
+        :rtype: ``bool``
+        """
+
+        if isinstance(contact, basestring):
+            contact = self.get_contact(contact)
+
+        if isinstance(group, basestring):
+            group = self.get_group(group)
+
+        method, url = get_URL('contacts_add_to_group')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'contactid': contact['contactid'],
+            'contactgroupid': group['contactgroupid']
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def remove_contact_from_group(self, contact, group):
+        """Remove contact from group
+
+        :param contact: name or contact object
+        :param group: name or group object
+        :type contact: ``str``, ``unicode``, ``dict``
+        :type group: ``str``, ``unicode``, ``dict``
+        :rtype: ``bool``
+        """
+
+        if isinstance(contact, basestring):
+            contact = self.get_contact(contact)
+
+        if isinstance(group, basestring):
+            group = self.get_group(group)
+
+        method, url = get_URL('contacts_remove_from_group')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'contactid': contact['contactid'],
+            'contactgroupid': group['contactgroupid']
             }
 
         res = getattr(self.session, method)(url, params=payload)
