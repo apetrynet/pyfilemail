@@ -104,7 +104,7 @@ Python API examples
     transfer.send(auto_complete=True)
 
     # Get contacts
-    user.get_contatcts()
+    user.get_contacts()
 
     # Get one single contact
     contact = user.get_contact('contact@email.address.com')
