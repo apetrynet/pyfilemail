@@ -5,7 +5,7 @@ from uuid import uuid4
 from mimetypes import guess_type
 from zipfile import ZipFile
 
-import users
+from users import User, login_required
 from pyfilemail import logger
 from urls import get_URL
 from errors import hellraiser, FMBaseError, FMFileError
@@ -50,9 +50,9 @@ class Transfer(object):
                  _restore=False):
 
         if isinstance(fm_user, basestring):
-            self.fm_user = users.User(fm_user)
+            self.fm_user = User(fm_user)
 
-        elif isinstance(fm_user, users.User):
+        elif isinstance(fm_user, User):
             self.fm_user = fm_user
 
         else:
@@ -107,6 +107,14 @@ class Transfer(object):
         else:
             hellraiser(res)
 
+    @property
+    def logged_in(self):
+        """If registered user is logged in or not.
+
+        :rtype: bool
+        """
+        return self.session.cookies.get('logintoken') and True or False
+
     def _parse_recipients(self, to):
         """Make sure we have a "," separated list of recipients
 
@@ -126,12 +134,12 @@ class Transfer(object):
             recipients = []
 
             for recipient in to:
-                if isinstance(recipient, users.Contact):
-                    recipients.append(recipient.get('name'))
+                if isinstance(recipient, dict):
+                    if 'contactgroupname' in recipient:
+                        recipients.append(recipient['contactgroupname'])
 
-                elif isinstance(recipient, users.Group):
-                    msg = 'Groups are not supported recipients yet. Sorry'
-                    raise NotImplemented(msg)
+                    else:
+                        recipients.append(recipient.get('email'))
 
                 else:
                     recipients.append(recipient)
@@ -224,7 +232,7 @@ class Transfer(object):
             md5hash = None
 
         specs = {
-            'transferid': self.transfer_info['transferid'],
+            'transferid': self.transfer_id,
             'transferkey': self.transfer_info['transferkey'],
             'fileid': fileid,
             'filepath': filepath,
@@ -238,14 +246,15 @@ class Transfer(object):
 
     def get_files(self):
         """Get information on file in transfer from Filemail.
-        :rtype: ``list`` of files
+
+        :rtype: ``list`` of ``dict`` objects with info on files
         """
 
         method, url = get_URL('get')
         payload = {
             'apikey': self.session.cookies.get('apikey'),
             'logintoken': self.session.cookies.get('logintoken'),
-            'transferid': self.transfer_info.get('id'),
+            'transferid': self.transfer_id,
             }
 
         res = getattr(self.session, method)(url, params=payload)
@@ -316,7 +325,7 @@ class Transfer(object):
 
         payload = {
             'apikey': self.session.cookies.get('apikey'),
-            'transferid': self.transfer_info['transferid'],
+            'transferid': self.transfer_id,
             'transferkey': self.transfer_info['transferkey']
             }
 
@@ -334,6 +343,76 @@ class Transfer(object):
         """:rtype: ``bool`` ``True`` if transfer is complete"""
 
         return self._complete
+
+    @property
+    def transfer_id(self):
+        """
+        Get the transfer id for the current Transfer.
+
+        :rtype: ``unicode`` with transfer id
+        """
+
+        if 'transferid' in self.transfer_info:
+            return self.transfer_info['transferid']
+
+        return self.transfer_info['id']
+
+    def forward(self, to):
+        """Forward prior transfer to new recipient(s).
+
+        :param to: new recipients to a previous transfer.
+         Use ``list`` or  comma seperatde ``str`` or ``unicode`` list
+        :type to: ``list`` or ``str`` or ``unicode``
+        :rtype: ``bool``
+
+        """
+
+        method, url = get_URL('forward')
+
+        payload = {
+            'apikey': self.session.cookies.get('apikey'),
+            'transferid': self.transfer_id,
+            'transferkey': self.transfer_info.get('transferkey'),
+            'to': self._parse_recipients(to)
+            }
+
+        res = self.session.send(method=method, url=url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def share(self, to, sender=None, message=None):
+        """Share transfer with new message to new people.
+
+        :param to: receiver(s)
+        :param sender: Alternate email address as sender
+        :param message: Meggase to new recipients
+        :type to: ``list`` or ``str`` or ``unicode``
+        :type sender: ``str`` or ``unicode``
+        :type message: ``str`` or ``unicode``
+        :rtyep: ``bool``
+        """
+
+        method, url = get_URL('share')
+
+        payload = {
+            'apikey': self.session.cookies.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'transferid': self.transfer_id,
+            'to': self._parse_recipients(to),
+            'from': sender or self.fm_user.username,
+            'message': message or ''
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
 
     def download(self, files, destination, callback=None):
         """
@@ -385,20 +464,6 @@ class Transfer(object):
                     callback(int(incr * count))
                     count += 1
 
-    def getTransferID(self):
-        """
-        Get the transfer id for the current Transfer.
-
-        :returns: `String` with transfer id
-        """
-
-        if 'transferid' in self.transfer_info:
-            transferid = self.transfer_info.get('transferid')
-        else:
-            transferid = self.transfer_info.get('id')
-
-        return transferid
-
     def update(self, **kwargs):
         """
         Update a completed transfer with new information.
@@ -416,8 +481,8 @@ class Transfer(object):
 
         payload = {
             'apikey': self.session.cookies.get('apikey'),
-            'logintoken': self.config.get('logintoken'),
-            'transferid': self.transferid,
+            'logintoken': self.session.cookies.get('logintoken'),
+            'transferid': self.transfer_id,
             'message': kwargs.get('message'),
             'days': kwargs.get('days'),
             'downloads': kwargs.get('downloads'),
@@ -440,8 +505,8 @@ class Transfer(object):
 
         payload = {
             'apikey': self.session.cookies.get('apikey'),
-            'transferid': self.transfer_info.get('transferid'),
-            'logintoken': self.config.get('logintoken')
+            'logintoken': self.session.cookies.get('logintoken'),
+            'transferid': self.transfer_id
             }
 
         res = self.session.send(method=method, url=url, params=payload)
@@ -458,7 +523,7 @@ class Transfer(object):
 
         payload = {
             'apikey': self.session.cookies.get('apikey'),
-            'transferid': self.transferid,
+            'transferid': self.transfer_id,
             'transferkey': self.transfer_info.get('transferkey')
             }
 
@@ -476,7 +541,7 @@ class Transfer(object):
 
         payload = {
             'apikey': self.session.cookies.get('apikey'),
-            'transferid': self.transferid,
+            'transferid': self.transfer_id,
             'transferkey': self.transfer_info.get('transferkey')
             }
 
@@ -486,68 +551,6 @@ class Transfer(object):
             hellraiser(res.json())
 
         self._complete = True
-
-    def share(self, **kwargs):
-        """
-        Share the transfer with new message to new people.
-
-        :param \*\*kwargs:
-
-        \*\*kwargs may contain:
-            * `to` (`List`) of email addresses or comma seperated `String`
-            * `from` (`String`) with alternate email
-            * `message` (`String`)
-        """
-
-        method, url = getURL('share')
-
-        if 'to' in kwargs:
-            to = kwargs.get('to')
-            if isinstance(to, list):
-                recipients = ','.join(to)
-            else:
-                recipients = to
-
-        payload = {
-            'apikey': self.session.cookies.get('apikey'),
-            'logintoken': self.config.get('logintoken'),
-            'transferid': self.transferid,
-            'to': ','.join(recipients),
-            'from': kwargs.get('from', self.config.get('username')),
-            'message': kwargs.get('message')
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res.json())
-
-    def forward(self, to=None):
-        """
-        Forward original transfer to new recipients.
-
-        :param to: `List` of new recipients or comma seperted `String`
-
-        """
-
-        if isinstance(to, (str, unicode)):
-            to = to.split(',')
-        elif isinstance(to, list):
-            to = ','.join(to)
-
-        method, url = getURL('forward')
-
-        payload = {
-            'apikey': self.session.cookies.get('apikey'),
-            'transferid': self.transferid,
-            'transferkey': self.transfer_info.get('transferkey'),
-            'to': to
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res.json())
 
     def renameFile(self, fmfile, filename):
         """
@@ -565,7 +568,7 @@ class Transfer(object):
 
         payload = {
             'apikey': self.session.cookies.get('apikey'),
-            'logintoken': self.config.get('logintoken'),
+            'logintoken': self.session.cookies.get('logintoken'),
             'fileid': fmfile.get('fileid'),
             'filename': filename
             }
@@ -591,7 +594,7 @@ class Transfer(object):
 
         payload = {
             'apikey': self.session.cookies.get('apikey'),
-            'logintoken': self.config.get('logintoken'),
+            'logintoken': self.session.cookies.get('logintoken'),
             'fileid': fmfile.get('fileid')
             }
 
@@ -600,6 +603,12 @@ class Transfer(object):
             hellraiser(res.json())
 
         self._complete = True
+
+    def __getitem__(self, key):
+        return self.transfer_info[key]
+
+    def __setitem__(self, key, value):
+        self.transfer_info[key] = value
 
     def __repr__(self):
         return repr(self.transfer_info)
