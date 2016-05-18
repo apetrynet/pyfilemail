@@ -8,12 +8,6 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
 
 Welcome to pyfilemail's documentation!
 ======================================
@@ -36,5 +30,11 @@ API
     :members:
     :undoc-members:
 
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`search`
 
 
