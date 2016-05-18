@@ -636,3 +636,157 @@ class User(object):
             return True
 
         hellraiser(res)
+
+    @login_required
+    def get_company_info(self):
+        """Get company settings from Filemail
+
+        :rtype: ``dict`` with company data
+        """
+
+        method, url = get_URL('company_get')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken')
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return res.json()['company']
+
+        hellraiser(res)
+
+    @login_required
+    def update_company(self, company):
+        """Update company settings
+
+        :param company: updated settings
+        :type company: ``dict``
+        :rtype: ``bool``
+        """
+
+        if not isinstance(company, dict):
+            raise AttributeError('company must be a <dict>')
+
+        method, url = get_URL('company_update')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken')
+            }
+
+        payload.update(company)
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def get_company_users(self):
+        """Get company users from Filemail
+
+        :rtype: ``list`` of ``dict`` with user data
+        """
+
+        method, url = get_URL('company_get_users')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken')
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return res.json()['users']
+
+        hellraiser(res)
+
+    @login_required
+    def get_company_user(self, email):
+        """Get company user based on email.
+
+        :param email: address of contact
+        :type email: ``str``, ``unicode``
+        :rtype: ``dict`` with contact information
+        """
+
+        users = self.get_company_users()
+        for user in users:
+            if user['email'] == email:
+                return user
+
+        msg = 'No user with email: "{email}" associated with this company.'
+        raise FMBaseError(msg.format(email=email))
+
+    @login_required
+    def company_add_user(self, email, name, password, receiver, admin):
+        """Add a user to the company account.
+
+        :param email:
+        :param name:
+        :param password: Pass without storing in plain text
+        :param receiver: Can user receive files
+        :param admin:
+        :type email: ``str`` or ``unicode``
+        :type name: ``str`` or ``unicode``
+        :type password: ``str`` or ``unicode``
+        :type receiver: ``bool``
+        :type admin: ``bool``
+        :rtype: ``bool``
+        """
+
+        method, url = get_URL('company_add_user')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'email': email,
+            'name': name,
+            'password': password,
+            'canreceivefiles': receiver,
+            'admin': admin
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def update_company_user(self, email, userdata):
+        """Update a company users settings
+
+        :param email: current email address of user
+        :param userdata: updated settings
+        :type email: ``str`` or ``unicode``
+        :type userdata: ``dict``
+        :rtype: ``bool``
+        """
+
+        if not isinstance(userdata, dict):
+            raise AttributeError('userdata must be a <dict>')
+
+        method, url = get_URL('company_update_user')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'useremail': email
+            }
+
+        payload.update(userdata)
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
