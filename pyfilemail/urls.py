@@ -30,7 +30,12 @@ api_urls = {
     'groups_get': ['get', 'api/contacts/group/get'],
     'group_add': ['get', 'api/contacts/group/add'],
     'group_update': ['get', 'api/contacts/group/update'],
-    'group_delete': ['get', 'api/contacts/group/delete']
+    'group_delete': ['get', 'api/contacts/group/delete'],
+    'company_get': ['get', 'api/company/get'],
+    'company_update': ['get', 'api/company/update'],
+    'company_get_users': ['get', 'api/company/user/getall'],
+    'company_add_user': ['get', 'api/company/user/add'],
+    'company_update_user': ['get', 'api/company/user/update']
     }
 
 
