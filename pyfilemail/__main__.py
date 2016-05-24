@@ -181,7 +181,7 @@ if __name__ == '__main__':
         days=args.days,
         password=args.password,
         checksum=args.checksum,
-        compress=args.compress
+        zip_=args.compress
         )
 
     transfer.add_files(args.payload)
