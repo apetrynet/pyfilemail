@@ -5,9 +5,9 @@ from uuid import uuid4
 from mimetypes import guess_type
 from zipfile import ZipFile
 
-from users import User, login_required
-from pyfilemail import logger
+import users
 from urls import get_URL
+from pyfilemail import logger, login_required
 from errors import hellraiser, FMBaseError, FMFileError
 
 
@@ -23,8 +23,8 @@ class Transfer(object):
     :param days: Number of days files are available for download
     :param password: Protect download with given password
     :param checksum: Create checksum of added files (a bit slower process)
-    :param compress: Compress files in a zip file before sending
-    :type compress: bool
+    :param zip_: Compress files in a zip file before sending
+    :type zip_: bool
     :type checksum: bool
     :type password: str, unicode
     :type days: int
@@ -46,13 +46,13 @@ class Transfer(object):
                  days=3,
                  password=None,
                  checksum=True,
-                 compress=False,
+                 zip_=False,
                  _restore=False):
 
         if isinstance(fm_user, basestring):
-            self.fm_user = User(fm_user)
+            self.fm_user = users.User(fm_user)
 
-        elif isinstance(fm_user, User):
+        elif isinstance(fm_user, users.User):
             self.fm_user = fm_user
 
         else:
@@ -65,7 +65,7 @@ class Transfer(object):
 
         self._complete = False
         self.checksum = checksum
-        self.compress = compress
+        self.zip_ = zip_
         self.config = self.fm_user.config
         self.session = self.fm_user.session
 
@@ -166,7 +166,7 @@ class Transfer(object):
             files = [files]
 
         zip_file = None
-        if self.compress:
+        if self.zip_:
             zip_filename = self._get_zip_filename()
             zip_file = ZipFile(zip_filename, 'w')
 
@@ -174,12 +174,12 @@ class Transfer(object):
             if os.path.isdir(filename):
                 for dirname, subdirs, filelist in os.walk(filename):
                     if dirname:
-                        if self.compress:
+                        if self.zip_:
                             zip_file.write(dirname)
 
                     for fname in filelist:
                         filepath = os.path.join(dirname, fname)
-                        if self.compress:
+                        if self.zip_:
                             zip_file.write(filepath)
 
                         else:
@@ -189,14 +189,14 @@ class Transfer(object):
                                 self._files.append(fmfile)
 
             else:
-                if self.compress:
+                if self.zip_:
                     zip_file.write(filename)
 
                 else:
                     fmfile = self.get_file_specs(filename)
                     self._files.append(fmfile)
 
-        if self.compress:
+        if self.zip_:
             zip_file.close()
             filename = zip_filename
             fmfile = self.get_file_specs(filename)
@@ -376,7 +376,7 @@ class Transfer(object):
             'to': self._parse_recipients(to)
             }
 
-        res = self.session.send(method=method, url=url, params=payload)
+        res = getattr(self.session, method)(url, params=payload)
 
         if res.status_code == 200:
             return True
@@ -414,195 +414,247 @@ class Transfer(object):
 
         hellraiser(res)
 
-    def download(self, files, destination, callback=None):
-        """
-        Download file or files.
+    def cancel(self):
+        """Cancel the current transfer.
 
-        :param files: :class:`FMFile` or list of :class:`FMFile`'s
-        :param destination: `String` containing save path
-        :param callback: pass instance of callback function that will receive a
-            percentage of file transfered
+        :rtype: ``bool``
         """
 
-        if not isinstance(files, list):
+        method, url = get_URL('cancel')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'transferid': self.transfer_id,
+            'transferkey': self.transfer_info.get('transferkey')
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            self._complete = True
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def delete(self):
+        """Delete the current transfer.
+
+        :rtype: ``bool``
+        """
+
+        method, url = get_URL('delete')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'transferid': self.transfer_id
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def rename_file(self, fmfile, newname):
+        """Rename file in transfer.
+
+        :param fmfile: file data from filemail containing fileid
+        :param newname: new file name
+        :type fmfile: ``dict``
+        :type newname: ``str`` or ``unicode``
+        :rtype: ``bool``
+        """
+
+        if not isinstance(fmfile, dict):
+            raise FMBaseError('fmfile must be a <dict>')
+
+        method, url = get_URL('file_rename')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'fileid': fmfile.get('fileid'),
+            'filename': newname
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+        if res.status_code == 200:
+            self._complete = True
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def delete_file(self, fmfile):
+        """Delete file from transfer.
+
+        :param fmfile: file data from filemail containing fileid
+        :type fmfile: ``dict``
+        :rtype: ``bool``
+        """
+
+        if not isinstance(fmfile, dict):
+            raise FMFileError('fmfile must be a <dict>')
+
+        method, url = get_URL('file_delete')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'fileid': fmfile.get('fileid')
+            }
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code == 200:
+            self._complete = True
+            return True
+
+        hellraiser(res)
+
+    @login_required
+    def update(self,
+               message=None,
+               subject=None,
+               days=None,
+               downloads=None,
+               notify=None):
+        """Update properties for a transfer.
+
+        :param message: updated message to recipient(s)
+        :param subject: updated subject for trasfer
+        :param days: updated amount of days transfer is available
+        :param downloads: update amount of downloads allowed for transfer
+        :param notify: update whether to notifiy on downloads or not
+        :type message: ``str`` or ``unicode``
+        :type subject: ``str`` or ``unicode``
+        :type days: ``int``
+        :type downloads: ``int``
+        :type notify: ``bool``
+        :rtype: ``bool``
+        """
+
+        method, url = get_URL('update')
+
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'transferid': self.transfer_id,
+            }
+
+        data = {
+            'message': message or self.transfer_info.get('message'),
+            'message': subject or self.transfer_info.get('subject'),
+            'days': days or self.transfer_info.get('days'),
+            'downloads': downloads or self.transfer_info.get('downloads'),
+            'notify': notify or self.transfer_info.get('notify')
+            }
+
+        payload.update(data)
+
+        res = getattr(self.session, method)(url, params=payload)
+
+        if res.status_code:
+            self.transfer_info.update(data)
+            return True
+
+        hellraiser(res)
+
+    def download(self,
+                 files=None,
+                 destination=None,
+                 overwrite=False,
+                 callback=None):
+
+        """Download file or files.
+
+        :param files: file or files to download
+        :param destination: destination path
+        :param overwrite: overwrite files that may exist?
+        :param callback: instance of callback function that will receive a
+         percentage of file transfered
+        :type files: ``list`` of ``dict`` with file data from filemail
+        :type destination: ``str`` or ``unicode``
+        :type overwrite: ``bool``
+        :rtype: ``bool``
+        """
+
+        if files is None:
+            files = self.files
+
+        elif not isinstance(files, list):
             files = [files]
 
         for f in files:
-            if not isinstance(f, FMFile):
-                raise FMFileError('File must be an FMFile instance')
+            if not isinstance(f, dict):
+                raise FMBaseError('File must be a <dict> with file data')
 
             self._download(f, destination, callback)
 
+        return True
+
     def _download(self, fmfile, destination, callback):
-        """
-        The actual downloader streaming content from Filemail.
+        """The actual downloader streaming content from Filemail.
 
-        :param fmfile: :class:`FMFile` to download
-        :param destination: `String` containing save path
-        :param callback: pass instance of callback function that will receive a
-            percentage of file transfered
+        :param fmfile: to download
+        :param destination: destination path
+        :param callback: instance of callback function that will receive a
+         ``float`` representing percentage of file transfered
+        :type fmfile: ``dict``
+        :type destination: ``str`` or ``unicode``
         """
 
-        filename = fmfile.get('filename')
-        fullpath = os.path.join(destination, filename)
+        fullpath = os.path.join(destination, fmfile.get('filename'))
+        path, filename = os.path.split(fullpath)
         filesize = fmfile.get('filesize')
-        chunksize = 125000
-        incr = 100.0 / (filesize / chunksize)
         count = 0
 
+        if not os.path.exists(path):
+            os.makedirs(path)
+
         url = fmfile.get('downloadurl')
-        stream = self.session.send(method='get', url=url, stream=True)
+        stream = self.session.get(url, stream=True)
 
         with open(fullpath, 'wb') as f:
-            for chunk in stream.iter_content(chunksize):
+            for chunk in stream.iter_content(chunk_size=1024):
                 if not chunk:
                     break
 
                 f.write(chunk)
 
                 if callback is not None:
-                    callback(int(incr * count))
-                    count += 1
+                    count += len(chunk)
+                    callback(float(count) / float(filesize) * 100)
 
-    def update(self, **kwargs):
-        """
-        Update a completed transfer with new information.
+    # Uncertain if this still is a valid endpoint. All transfers get a zip
+    # available in the download page. Docs are outdated as well.
 
-        :param \*\*kwargs:
+    #@login_required
+    #def compress(self):
+        #"""Compress files on the server side after transfer complete
+        # and make zip available for download.
 
-        \*\*kwargs may contain:
-            * `message` (`String`)
-            * `days` (`Integer`) available
-            * `downloads` (`Integer`) number of
-            * `notify` (`Boolean`) on downloads
-        """
+        #:rtype: ``bool``
+        #"""
 
-        method, url = getURL('update')
+        #method, url = get_URL('compress')
 
-        payload = {
-            'apikey': self.session.cookies.get('apikey'),
-            'logintoken': self.session.cookies.get('logintoken'),
-            'transferid': self.transfer_id,
-            'message': kwargs.get('message'),
-            'days': kwargs.get('days'),
-            'downloads': kwargs.get('downloads'),
-            'notify': kwargs.get('notify')
-            }
+        #payload = {
+            #'apikey': self.config.get('apikey'),
+            #'logintoken': self.session.cookies.get('logintoken'),
+            #'transferid': self.transfer_id
+            #}
 
-        res = self.session.send(method=method, url=url, params=payload)
+        #res = getattr(self.session, method)(url, params=payload)
 
-        if not res.ok:
-            hellraiser(res.json())
+        #if res.status_code == 200:
+            #return True
 
-        self.transfer_info.update(res.json())
-
-    def delete(self):
-        """
-        Delete the current transfer.
-        """
-
-        method, url = getURL('delete')
-
-        payload = {
-            'apikey': self.session.cookies.get('apikey'),
-            'logintoken': self.session.cookies.get('logintoken'),
-            'transferid': self.transfer_id
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res.json())
-
-    def zip(self):
-        """
-        Zip the current transfer on the server side.
-        """
-
-        method, url = getURL('zip')
-
-        payload = {
-            'apikey': self.session.cookies.get('apikey'),
-            'transferid': self.transfer_id,
-            'transferkey': self.transfer_info.get('transferkey')
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res.json())
-
-    def cancel(self):
-        """
-        Cancel the current transfer.
-        """
-
-        method, url = getURL('cancel')
-
-        payload = {
-            'apikey': self.session.cookies.get('apikey'),
-            'transferid': self.transfer_id,
-            'transferkey': self.transfer_info.get('transferkey')
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-
-        if not res.ok:
-            hellraiser(res.json())
-
-        self._complete = True
-
-    def renameFile(self, fmfile, filename):
-        """
-        Rename file in transfer.
-
-        :param fmfile: :class:`FMFile` object instance to rename
-        :param filename: `String` new filename
-
-        """
-
-        if not isinstance(fmfile, FMFile):
-            raise FMFileError('fmfile must be an FMFile object')
-
-        method, url = getURL('file_rename')
-
-        payload = {
-            'apikey': self.session.cookies.get('apikey'),
-            'logintoken': self.session.cookies.get('logintoken'),
-            'fileid': fmfile.get('fileid'),
-            'filename': filename
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-        if not res.ok:
-            hellraiser(res.json())
-
-        self._complete = True
-
-    def deleteFile(self, fmfile):
-        """
-        Delete file in transfer.
-
-        :param fmfile: :class:`FMFile` object instance to delete
-
-        """
-
-        if not isinstance(fmfile, FMFile):
-            raise FMFileError('fmfile must be an FMFile object')
-
-        method, url = getURL('file_delete')
-
-        payload = {
-            'apikey': self.session.cookies.get('apikey'),
-            'logintoken': self.session.cookies.get('logintoken'),
-            'fileid': fmfile.get('fileid')
-            }
-
-        res = self.session.send(method=method, url=url, params=payload)
-        if not res.ok:
-            hellraiser(res.json())
-
-        self._complete = True
+        #hellraiser(res)
 
     def __getitem__(self, key):
         return self.transfer_info[key]
