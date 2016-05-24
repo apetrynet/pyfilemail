@@ -126,7 +126,7 @@ Python API examples
     # Download received transfers for the past 7 days
     transfers = user.get_received(age=7)
     for transfer in transfers:
-        transfer.download(destination=/home/myname/Downloads)
+        transfer.download(destination='/home/myname/Downloads')
 
     # Logout
     user.logout()
