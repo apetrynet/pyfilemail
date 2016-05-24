@@ -3,29 +3,12 @@ import json
 from appdirs import AppDirs
 from calendar import timegm
 from datetime import datetime, timedelta
-from functools import wraps
 from requests import Session
 
-from pyfilemail import logger
+from pyfilemail import logger, login_required
 from urls import get_URL
 from transfer import Transfer
 from errors import hellraiser, FMBaseError
-
-
-def login_required(f):
-    """Check if user is loged in.
-
-    :raises: :class:`FMBaseError` if not logged in
-    """
-
-    @wraps(f)
-    def check_login(cls, *args, **kwargs):
-        if not cls.logged_in:
-            raise FMBaseError('Please login to use this method')
-
-        return f(cls, *args, **kwargs)
-
-    return check_login
 
 
 class User(object):
@@ -275,7 +258,7 @@ class User(object):
         hellraiser(res)
 
     @login_required
-    def get_received_files(self, age=None, for_all=True):
+    def get_received(self, age=None, for_all=True):
         """Retrieve a list of transfers sent to you or your company
          from other people.
 
