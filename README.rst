@@ -1,8 +1,6 @@
 NOTE!
 =====
-I'm in the middle of a major rewrite so the documentation and some of the methods are out of date.
-You should be able to send files with the command line tool. Thing will change and the rest of the API will get refactored.
-
+This is still work in progress and parts of the API might chnage as I test it further.
 
 pyfilemail
 ==========
@@ -13,6 +11,14 @@ and `requests <https://github.com/kennethreitz/requests>`_
 You should register and get an `API KEY <http://www.filemail.com/apidoc/ApiKey.aspx>`_ to unlock all features and be able to add/delete/update your transfers.
 You'll be able to send files without registering, but remember to use the "--anonymous" option in the tool.
 
+As it is now the API is a thin wrapper around filemail's REST API. Appart from :class:`pyfilemail.User` and :class:`pyfilemail.Transfer` classes, all return objects from filemail are kept as ``dict`` based on the json response.
+
+I've tried to keep this api as simple as possible and rely on filemail's own validation of data and error codes to keep you all in check :) The reason for this is that I don't work at filemail and have no insight in what validation they have for the data passed.
+It also saves me a lot of head ache writing rock solid validation code and I think this is a more flexible way of doing it. Please correct me if I'm wrong here.
+
+So far this has been developed and tested on Ubuntu. I'll try to get my hands on a Windows and OSX machine and addapt the code to make sure it works there as well.
+
+Any feedback is more than welcome and please report bugs through `github <https://github.com/apetrynet/pyfilemail/issues>`_
 
 Command line example
 ********************
@@ -116,6 +122,11 @@ Python API examples
     # Delete contact
     unfriendly = user.get_contact('contact@email.address.com')
     user.delete_contact(unfriendly)
+
+    # Download received transfers for the past 7 days
+    transfers = user.get_received(age=7)
+    for transfer in transfers:
+        transfer.download(destination=/home/myname/Downloads)
 
     # Logout
     user.logout()
