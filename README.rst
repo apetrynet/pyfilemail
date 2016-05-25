@@ -1,6 +1,6 @@
 NOTE!
 =====
-This is still work in progress and parts of the API might chnage as I test it further.
+This is still work in progress and parts of the API might change as I test it further.
 
 pyfilemail
 ==========
