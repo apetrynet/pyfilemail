@@ -9,7 +9,7 @@ Pyfilemail is a command line tool and API for sending and recieving files with `
 and `requests <https://github.com/kennethreitz/requests>`_
 
 You should register and get an `API KEY <http://www.filemail.com/apidoc/ApiKey.aspx>`_ to unlock all features and be able to add/delete/update your transfers.
-You'll be able to send files without registering, but remember to use the "--anonymous" option in the tool.
+You'll be able to send files without registering, but remember to use the "--unregistered" option in the tool.
 
 The API KEY goes into the config file found here:
 
@@ -58,7 +58,7 @@ Command line help
 
     optional arguments:
       -h, --help            show this help message and exit
-      -a, --anonymous       No active filemail account
+      -un, --unregistered   Send files without registered Filemail account
       -nc, --no-checksum    Don't calculate checksum on added files
       --compress            Compress (ZIP) data before sending?
       --confirm             Email confirmation after sending the files?
