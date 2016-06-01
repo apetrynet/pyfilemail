@@ -109,7 +109,7 @@ class User(object):
         return configfile
 
     @property
-    def is_anonymous(self):
+    def is_registered(self):
         """If user is a registered user or not.
 
         :rtype: bool
