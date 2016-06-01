@@ -46,10 +46,6 @@ class User(object):
             self.session.cookies['source'] = 'web'
             self.session.cookies['logintoken'] = None
 
-        #TODO: use these as caches to avoid too many calls home
-        #self._contacts = {}
-        #self._groups = {}
-
     def load_config(self):
         """Load configuration file containing API KEY and other settings.
 
@@ -302,11 +298,7 @@ class User(object):
 
         transfers = []
         for transfer_data in response.json()['transfers']:
-            user = transfer_data['from']
-            if user == self.username:
-                user = self
-
-            transfer = Transfer(user, _restore=True)
+            transfer = Transfer(self, _restore=True)
             transfer.transfer_info.update(transfer_data)
             transfer.get_files()
             transfers.append(transfer)
