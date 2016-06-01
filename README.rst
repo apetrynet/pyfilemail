@@ -11,6 +11,12 @@ and `requests <https://github.com/kennethreitz/requests>`_
 You should register and get an `API KEY <http://www.filemail.com/apidoc/ApiKey.aspx>`_ to unlock all features and be able to add/delete/update your transfers.
 You'll be able to send files without registering, but remember to use the "--anonymous" option in the tool.
 
+The API KEY goes into the config file found here:
+
+ * Linux: ~/.local/share/pyfilemail
+ * OSX: ~/Library/Application Support/pyfilemail
+ * Windows: C:\\Users\\{username}\\AppData\\Local\\pyfilemail
+
 As it is now the API is a thin wrapper around filemail's REST API. Appart from :class:`pyfilemail.User` and :class:`pyfilemail.Transfer` classes, all return objects from filemail are kept as ``dict`` based on the json response.
 
 I've tried to keep this api as simple as possible and rely on filemail's own validation of data and error codes to keep you all in check :) The reason for this is that I don't work at filemail and have no insight in what validation they have for the data passed.
