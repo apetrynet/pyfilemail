@@ -25,12 +25,12 @@ def parse_args():
     prog = 'python -m pyfilemail'
 
     parser = argparse.ArgumentParser(prog=prog, description=description)
-    parser.add_argument('-a',
-                        '--anonymous',
-                        dest='anonymous',
+    parser.add_argument('-un',
+                        '--unregistered',
+                        dest='unregistered',
                         action='store_true',
                         default=False,
-                        help='No active filemail account')
+                        help='Send files without a registered Filemail account')
 
     parser.add_argument('-nc',
                         '--no-checksum',
@@ -160,7 +160,7 @@ if __name__ == '__main__':
 
     pwd = None
 
-    if not args.anonymous:
+    if not args.unregistered:
         if KEYRING:
             pwd = keyring.get_password('pyfilemail', args.username)
 
