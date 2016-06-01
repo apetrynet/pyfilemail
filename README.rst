@@ -24,6 +24,8 @@ It also saves me a lot of head ache writing rock solid validation code and I thi
 
 So far this has been developed and tested on Ubuntu. I'll try to get my hands on a Windows and OSX machine and addapt the code to make sure it works there as well.
 
+API documentation is available `here <http://pyfilemail.readthedocs.io/en/latest/>`_
+
 Any feedback is more than welcome and please report bugs through `github <https://github.com/apetrynet/pyfilemail/issues>`_
 
 Command line example
