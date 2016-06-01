@@ -630,31 +630,28 @@ class Transfer(object):
                     count += len(chunk)
                     callback(float(count) / float(filesize) * 100)
 
-    # Uncertain if this still is a valid endpoint. All transfers get a zip
-    # available in the download page. Docs are outdated as well.
+    @login_required
+    def compress(self):
+        """Compress files on the server side after transfer complete
+         and make zip available for download.
 
-    #@login_required
-    #def compress(self):
-        #"""Compress files on the server side after transfer complete
-        # and make zip available for download.
+        :rtype: ``bool``
+        """
 
-        #:rtype: ``bool``
-        #"""
+        method, url = get_URL('compress')
 
-        #method, url = get_URL('compress')
+        payload = {
+            'apikey': self.config.get('apikey'),
+            'logintoken': self.session.cookies.get('logintoken'),
+            'transferid': self.transfer_id
+            }
 
-        #payload = {
-            #'apikey': self.config.get('apikey'),
-            #'logintoken': self.session.cookies.get('logintoken'),
-            #'transferid': self.transfer_id
-            #}
+        res = getattr(self.session, method)(url, params=payload)
 
-        #res = getattr(self.session, method)(url, params=payload)
+        if res.status_code == 200:
+            return True
 
-        #if res.status_code == 200:
-            #return True
-
-        #hellraiser(res)
+        hellraiser(res)
 
     def __getitem__(self, key):
         return self.transfer_info[key]
