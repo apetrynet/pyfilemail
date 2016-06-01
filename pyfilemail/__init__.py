@@ -48,7 +48,7 @@ from errors import FMBaseError
 
 
 def login_required(f):
-    """Check if user is loged in.
+    """Decorator function to check if user is loged in.
 
     :raises: :class:`FMBaseError` if not logged in
     """
