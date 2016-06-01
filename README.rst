@@ -85,14 +85,11 @@ Python API examples
 
     import pyfilemail
 
-    # Login to a Filemail account
-    user = pyfilemail.User(username='user@mailprovider.com',
-                           password='YourSecretPassword2014')
-
-    # List all prior transfers
-    transfers = user.get_sent(expired=True)
-
     # Setup a transfer
+
+    # Initialize Filemail with an unregistered user
+    user = pyfilemail.User(username='user@mailprovider.com')
+
     transfer = pyfilemail.Transfer(user,
                                    to='lucky@recipient.com',
                                    subject='My BIG file no email can handle',
@@ -114,6 +111,13 @@ Python API examples
 
     # Send files to recipient(s)
     transfer.send(auto_complete=True)
+
+    # Login to a registered Filemail account
+    user = pyfilemail.User(username='user@mailprovider.com',
+                           password='YourSecretPassword2014')
+
+    # List all prior transfers
+    transfers = user.get_sent(expired=True)
 
     # Get contacts
     user.get_contacts()
