@@ -5,3 +5,5 @@
 *.bak
 docs/build/
 *.egg-info/
+dist/
+build/
