@@ -30,7 +30,7 @@ file transfers with www.filemail.com',
     install_requires=dependencies,
     entry_points={
         'console_scripts': [
-            'pyfilemail=pyfilemail:main',
+            'pyfilemail=pyfilemail:__main__',
             ],
         },
     classifiers=[
