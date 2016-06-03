@@ -155,7 +155,7 @@ https://github.com/apetrynet/pyfilemail',
     return args
 
 
-if __name__ == '__main__':
+def main():
     args = parse_args()
 
     pwd = None
@@ -191,3 +191,6 @@ if __name__ == '__main__':
     if res.status_code == 200:
         msg = 'Transfer complete!'
         logger.info(msg)
+
+if __name__ == '__main__':
+    main()
