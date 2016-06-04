@@ -160,42 +160,43 @@ def main():
 
     pwd = None
 
-    if not args.unregistered:
-        if KEYRING:
-            pwd = keyring.get_password('pyfilemail', args.username)
-
-        if pwd is None:
-            pwd = getpass.getpass('Please enter Filemail password: ')
-            if args.store_password and KEYRING:
-                keyring.set_password('pyfilemail', args.username, pwd)
-
-    fm_user = User(args.username, password=pwd)
-
-    transfer = Transfer(
-        fm_user,
-        to=args.to,
-        subject=args.subject,
-        message=args.message,
-        notify=args.notify,
-        confirmation=args.confirm,
-        days=args.days,
-        password=args.password,
-        checksum=args.checksum,
-        zip_=args.compress
-        )
-
-    transfer.add_files(args.payload)
-
-    res = transfer.send()
-
-    if res.status_code == 200:
-        msg = 'Transfer complete!'
-        logger.info(msg)
-
-if __name__ == '__main__':
     try:
-        main()
+        if not args.unregistered:
+            if KEYRING:
+                pwd = keyring.get_password('pyfilemail', args.username)
+
+            if pwd is None:
+                pwd = getpass.getpass('Please enter Filemail password: ')
+                if args.store_password and KEYRING:
+                    keyring.set_password('pyfilemail', args.username, pwd)
+
+        fm_user = User(args.username, password=pwd)
+
+        transfer = Transfer(
+            fm_user,
+            to=args.to,
+            subject=args.subject,
+            message=args.message,
+            notify=args.notify,
+            confirmation=args.confirm,
+            days=args.days,
+            password=args.password,
+            checksum=args.checksum,
+            zip_=args.compress
+            )
+
+        transfer.add_files(args.payload)
+
+        res = transfer.send()
+
+        if res.status_code == 200:
+            msg = 'Transfer complete!'
+            logger.info(msg)
 
     except KeyboardInterrupt:
         msg = 'Aborted by user!'
         logger.warning(msg)
+
+if __name__ == '__main__':
+    main()
+
