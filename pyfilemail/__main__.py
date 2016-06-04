@@ -193,4 +193,9 @@ def main():
         logger.info(msg)
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+
+    except KeyboardInterrupt:
+        msg = 'Aborted by user!'
+        logger.warning(msg)
