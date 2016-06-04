@@ -51,11 +51,11 @@ def parse_args():
                         default=False,
                         help='Email confirmation after sending the files?')
 
-    parser.add_argument('--console',
-                        dest='console',
+    parser.add_argument('--quiet',
+                        dest='quiet',
                         action='store_true',
                         default=False,
-                        help='Logs to console')
+                        help='Log only warnings to console')
 
     parser.add_argument('--days',
                         dest='days',
@@ -140,8 +140,8 @@ https://github.com/apetrynet/pyfilemail',
     args = parser.parse_args()
 
     if args.console:
-        streamhandler.setLevel(logging.INFO)
-        logger.info('Logging to console enabled.')
+        streamhandler.setLevel(logging.WARNING)
+        logger.info('Quiet console stream logging enabled.')
 
     if args.delete_password and KEYRING:
         try:
