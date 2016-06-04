@@ -139,7 +139,7 @@ https://github.com/apetrynet/pyfilemail',
 
     args = parser.parse_args()
 
-    if args.console:
+    if args.quiet:
         streamhandler.setLevel(logging.WARNING)
         logger.info('Quiet console stream logging enabled.')
 
