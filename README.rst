@@ -17,7 +17,7 @@ The API KEY goes into the config file found here:
  * OSX: ~/Library/Application Support/pyfilemail
  * Windows: C:\\Users\\{username}\\AppData\\Local\\pyfilemail
 
-As it is now the API is a thin wrapper around filemail's REST API. Appart from :class:`pyfilemail.User` and :class:`pyfilemail.Transfer` classes, all return objects from filemail are kept as ``dict`` based on the json response.
+As it is now the API is a thin wrapper around filemail's REST API. Appart from ``pyfilemail.User`` and  ``pyfilemail.Transfer`` classes, all return objects from filemail are kept as ``dict`` based on the json response.
 
 I've tried to keep this api as simple as possible and rely on filemail's own validation of data and error codes to keep you all in check :) The reason for this is that I don't work at filemail and have no insight in what validation they have for the data passed.
 It also saves me a lot of head ache writing rock solid validation code and I think this is a more flexible way of doing it. Please correct me if I'm wrong here.
@@ -28,15 +28,23 @@ API documentation is available `here <http://pyfilemail.readthedocs.io/en/latest
 
 Any feedback is more than welcome and please report bugs through `github <https://github.com/apetrynet/pyfilemail/issues>`_
 
+Installation
+============
+
+..  code-block:: bash
+
+    pip install pyfilemail
+
 Command line example
 ********************
 
 ..  code-block:: bash
 
-    python -m pyfilemail \
+    pyfilemail \
     --subject "Amazing document!" \
     --message "Have you seen this amazing document?" \
     --username myemail@somedomain.com \
+    --unregistered \
     --to lucky.b@receiver.com \
     --payload /path/to/file.ext /path/to/folder/
 
@@ -46,15 +54,15 @@ Command line help
 
 ..  code-block:: bash
 
-    python -m pyfilemail -h
-    usage: python -m pyfilemail [-h] [-a] [-nc] [--compress] [--confirm]
-                                [--console] [--days DAYS] [--downloads DOWNLOADS]
-                                [--message MESSAGE] [--notify] [--subject SUBJECT]
-                                --to recipient@receiver.com
-                                [recipient@receiver.com ...] [--password PASSWORD]
-                                --username USERNAME [--store-password]
-                                [--delete-password] --payload PAYLOAD
-                                [PAYLOAD ...]
+    pyfilemail -h
+    usage: pyfilemail [-h] [-a] [-nc] [--compress] [--confirm]
+                      [--console] [--days DAYS] [--downloads DOWNLOADS]
+                      [--message MESSAGE] [--notify] [--subject SUBJECT]
+                      --to recipient@receiver.com
+                      [recipient@receiver.com ...] [--password PASSWORD]
+                      --username USERNAME [--store-password]
+                      [--delete-password] --payload PAYLOAD
+                      [PAYLOAD ...]
 
     Command line Filemail transfer through Python
 
