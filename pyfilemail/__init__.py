@@ -36,7 +36,7 @@ filehandler.setFormatter(formatter)
 
 # Stream logger
 streamhandler = logging.StreamHandler()
-streamhandler.setLevel(logging.WARNING)
+streamhandler.setLevel(logging.INFO)
 
 # Add handler
 logger.addHandler(filehandler)
