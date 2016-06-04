@@ -121,7 +121,7 @@ https://github.com/apetrynet/pyfilemail',
                         dest='store_password',
                         action='store_true',
                         default=False,
-                        help='Store user password in keychain')
+                        help='Store user password in keychain if available')
 
     parser.add_argument('--delete-password',
                         dest='delete_password',
