@@ -22,7 +22,7 @@ As it is now the API is a thin wrapper around filemail's REST API. Appart from `
 I've tried to keep this api as simple as possible and rely on filemail's own validation of data and error codes to keep you all in check :) The reason for this is that I don't work at filemail and have no insight in what validation they have for the data passed.
 It also saves me a lot of head ache writing rock solid validation code and I think this is a more flexible way of doing it. Please correct me if I'm wrong here.
 
-So far this has been developed and tested on Ubuntu. I'll try to get my hands on a Windows and OSX machine and addapt the code to make sure it works there as well.
+So far this has been developed and tested on Ubuntu 16.04. I'll try to get my hands on a Windows and OSX machine and addapt the code to make sure it works there as well.
 
 API documentation is available `here <http://pyfilemail.readthedocs.io/en/latest/>`_
 
