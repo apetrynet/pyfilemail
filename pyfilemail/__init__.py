@@ -63,5 +63,7 @@ def login_required(f):
     return check_login
 
 
+# TODO: Move config locate/save/load here
+
 from users import User  # lint:ok
 from transfer import Transfer  # lint:ok
