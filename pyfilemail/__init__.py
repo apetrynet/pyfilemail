@@ -9,14 +9,23 @@ __copyright__ = 'Copyright 2016 Daniel Flehner Heen'
 
 import os
 import logging
+import json
 from functools import wraps
 
 import appdirs
 
+from errors import FMBaseError
+
 # Init logger
 logger = logging.getLogger('pyfilemail')
 
-level = os.getenv('PYFILEMAÌL_DEBUG') and logging.DEBUG or logging.INFO
+env_level = os.getenv('PYFILEMAÌL_LOG_LEVEL')
+if env_level is not None and hasattr(logging, env_level.upper()):
+    level = getattr(logging, env_level.uppper())
+
+else:
+    level = logging.INFO
+
 logger.setLevel(level)
 
 # Formatter
@@ -24,7 +33,7 @@ format_string = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 formatter = logging.Formatter(format_string)
 
 # File logger setup
-datadir = appdirs.user_data_dir(appname='pyfilemail', version=__version__)
+datadir = appdirs.user_data_dir(appname='pyfilemail')
 if not os.path.exists(datadir):
     os.makedirs(datadir)
 
@@ -44,9 +53,6 @@ logger.addHandler(streamhandler)
 
 
 # Decorator to make sure user is logged in
-from errors import FMBaseError
-
-
 def login_required(f):
     """Decorator function to check if user is loged in.
 
@@ -63,7 +69,65 @@ def login_required(f):
     return check_login
 
 
-# TODO: Move config locate/save/load here
+def load_config():
+    """Load configuration file containing API KEY and other settings.
+
+    :rtype: str
+    """
+
+    configfile = get_configfile()
+
+    if not os.path.exists(configfile):
+        data = {
+            'apikey': 'GET KEY AT: https://www.filemail.com/apidoc/ApiKey.aspx'
+            }
+
+        save_config(data)
+
+    with open(configfile, 'rb') as f:
+        return json.load(f)
+
+
+def save_config(config):
+    """Save configuration file to users data location.
+
+     - Linux: ~/.local/share/pyfilemail
+     - OSX: ~/Library/Application Support/pyfilemail
+     - Windows: C:\\\Users\\\{username}\\\AppData\\\Local\\\pyfilemail
+
+     :rtype: str
+    """
+
+    configfile = get_configfile()
+
+    if not os.path.exists(configfile):
+        configdir = os.path.dirname(configfile)
+
+        if not os.path.exists(configdir):
+            os.makedirs(configdir)
+
+    data = config
+
+    with open(configfile, 'wb') as f:
+        json.dump(data, f, indent=2)
+
+
+def get_configfile():
+    """Return full path to configuration file.
+
+     - Linux: ~/.local/share/pyfilemail
+     - OSX: ~/Library/Application Support/pyfilemail
+     - Windows: C:\\\Users\\\{username}\\\AppData\\\Local\\\pyfilemail
+
+     :rtype: str
+    """
+
+    ad = appdirs.AppDirs('pyfilemail')
+    configdir = ad.user_data_dir
+    configfile = os.path.join(configdir, 'pyfilemail.cfg')
+
+    return configfile
+
 
 from users import User  # lint:ok
 from transfer import Transfer  # lint:ok

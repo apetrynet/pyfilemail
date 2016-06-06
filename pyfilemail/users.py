@@ -1,11 +1,8 @@
-import os
-import json
-from appdirs import AppDirs
 from calendar import timegm
 from datetime import datetime, timedelta
 from requests import Session
 
-from pyfilemail import logger, login_required
+from pyfilemail import logger, login_required, load_config, get_configfile
 from urls import get_URL
 from transfer import Transfer
 from errors import hellraiser, FMBaseError
@@ -30,13 +27,13 @@ class User(object):
         self.transfers = []
 
         self.session = Session()
-        self.config = self.load_config()
+        self.config = load_config()
 
         apikey = self.config.get('apikey')
         self.session.cookies['apikey'] = apikey
-        if apikey.startswith('GET KEY FROM'):
-            msg = 'No API KEY set in config.\n{apikey}\n'
-            logger.warning(msg.format(apikey=apikey))
+        if apikey.startswith('GET KEY AT:'):
+            msg = 'No API KEY set in {conf}.\n{apikey}\n'
+            logger.warning(msg.format(conf=get_configfile(), apikey=apikey))
 
         if password is not None:
             self.login(password)
@@ -45,64 +42,6 @@ class User(object):
         else:
             self.session.cookies['source'] = 'web'
             self.session.cookies['logintoken'] = None
-
-    def load_config(self):
-        """Load configuration file containing API KEY and other settings.
-
-        :rtype: str
-        """
-
-        configfile = self.get_configfile()
-
-        if not os.path.exists(configfile):
-            self.save_config()
-
-        with open(configfile, 'rb') as f:
-            return json.load(f)
-
-    def save_config(self):
-        """Save configuration file to users data location.
-
-         - Linux: ~/.local/share/pyfilemail
-         - OSX: ~/Library/Application Support/pyfilemail
-         - Windows: C:\\\Users\\\{username}\\\AppData\\\Local\\\pyfilemail
-
-         :rtype: str
-        """
-
-        configfile = self.get_configfile()
-
-        if not os.path.exists(configfile):
-            configdir = os.path.dirname(configfile)
-
-            if not os.path.exists(configdir):
-                os.makedirs(configdir)
-
-            data = {
-                'apikey': 'GET KEY FROM www.filemail.com/apidoc/ApiKey.aspx'
-                }
-
-        else:
-            data = self.config
-
-        with open(configfile, 'wb') as f:
-            json.dump(data, f, indent=2)
-
-    def get_configfile(self):
-        """Return full path to configuration file.
-
-         - Linux: ~/.local/share/pyfilemail
-         - OSX: ~/Library/Application Support/pyfilemail
-         - Windows: C:\\\Users\\\{username}\\\AppData\\\Local\\\pyfilemail
-
-         :rtype: str
-        """
-
-        ad = AppDirs('pyfilemail')
-        configdir = ad.user_data_dir
-        configfile = os.path.join(configdir, 'pyfilemail.cfg')
-
-        return configfile
 
     @property
     def is_registered(self):

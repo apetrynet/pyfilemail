@@ -21,6 +21,7 @@ class Transfer(object):
     :param notify: Notify when recipient(s) download files
     :param confirmation: Receive confirmation email when files are uploaded
     :param days: Number of days files are available for download
+    :param downloads: Number of times files may be downloaded
     :param password: Protect download with given password
     :param checksum: Create checksum of added files (a bit slower process)
     :param zip_: Compress files in a zip file before sending
@@ -44,6 +45,7 @@ class Transfer(object):
                  notify=False,
                  confirmation=False,
                  days=3,
+                 downloads=0,
                  password=None,
                  checksum=True,
                  zip_=False,
@@ -77,6 +79,7 @@ class Transfer(object):
             'notify': notify,
             'confirmation': confirmation,
             'days': days,
+            'downloads': downloads,
             'password': password
             }
 
