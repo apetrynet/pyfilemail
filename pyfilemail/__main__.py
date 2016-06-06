@@ -13,7 +13,14 @@ k = keyring.get_keyring()
 if isinstance(k, keyring.backends.fail.Keyring):
     KEYRING = False
 
-from pyfilemail import logger, streamhandler
+from pyfilemail import (
+    logger,
+    streamhandler,
+    load_config,
+    save_config,
+    get_configfile
+    )
+
 from users import User
 from transfer import Transfer
 
@@ -25,9 +32,14 @@ def parse_args():
     prog = 'pyfilemail'
 
     parser = argparse.ArgumentParser(prog=prog, description=description)
-    parser.add_argument('-un',
-                        '--unregistered',
-                        dest='unregistered',
+    parser.add_argument('--add-api-key',
+                        dest='add_api_key',
+                        action='store',
+                        type=unicodize,
+                        default=None,
+                        help='Add API KEY from Filemail to local config file')
+    parser.add_argument('--free',
+                        dest='free',
                         action='store_true',
                         default=False,
                         help='Send files without a registered Filemail account')
@@ -62,14 +74,18 @@ def parse_args():
                         action='store',
                         type=int,
                         default=3,
-                        help='Number of days the file(s) can be downloaded')
+                        metavar=3,
+                        help='Number of days the file(s) are available for \
+download')
 
     parser.add_argument('--downloads',
                         dest='downloads',
                         action='store',
                         type=int,
                         default=0,
-                        help='Number of times the file(s) can be downloaded')
+                        metavar=0,
+                        help='Number of times the file(s) may be downloaded. \
+0=unlimited')
 
     parser.add_argument('--message',
                         dest='message',
@@ -94,7 +110,6 @@ https://github.com/apetrynet/pyfilemail',
 
     parser.add_argument('--to',
                         dest='to',
-                        required=True,
                         action='store',
                         nargs='+',
                         type=unicodize,
@@ -109,10 +124,9 @@ https://github.com/apetrynet/pyfilemail',
                         default='',
                         help='Protect transfer with the supplied password')
 
-    parser.add_argument('--username',
+    parser.add_argument('--from',
                         dest='username',
                         action='store',
-                        required=True,
                         type=unicodize,
                         default=None,
                         help='Your email address')
@@ -133,16 +147,22 @@ https://github.com/apetrynet/pyfilemail',
                         action='store',
                         dest='payload',
                         default=None,
-                        required=True,
                         nargs='+',
                         help='File(s) and/or folder(s) to transfer')
 
     args = parser.parse_args()
 
-    if args.quiet:
-        streamhandler.setLevel(logging.WARNING)
-        logger.info('Quiet console stream logging enabled.')
+    # Add API KEY if provided
+    if args.add_api_key is not None:
+        config = load_config()
+        config['apikey'] = args.add_api_key
+        save_config(config)
 
+        msg = 'API KEY: "{apikey}" added to {conf}'
+        logger.info(msg.format(apikey=args.add_api_key, conf=get_configfile()))
+        sys.exit()
+
+    # Check if user wants to delete password stored in keychain
     if args.delete_password and KEYRING:
         try:
             keyring.delete_password('pyfilemail', args.username)
@@ -151,6 +171,29 @@ https://github.com/apetrynet/pyfilemail',
 
         except PasswordDeleteError:
             pass
+
+    # Check for username
+    if args.username is None:
+        msg = 'Please provide your email address to the --from argument'
+        logger.error(msg)
+        sys.exit(1)
+
+    # Check for recipient(s)
+    if args.to is None:
+        msg = 'Please provide recipient(s) to the --to argument'
+        logger.error(msg)
+        sys.exit(1)
+
+    # Check for files and folders to send
+    if args.payload is None:
+        msg = 'Please provide file(s)/folder(s) to the --payload argument'
+        logger.error(msg)
+        sys.exit(1)
+
+    # Set console logging to a minimal if user wants it
+    if args.quiet:
+        streamhandler.setLevel(logging.WARNING)
+        logger.info('Quiet console stream logging enabled.')
 
     return args
 
@@ -161,7 +204,7 @@ def main():
     pwd = None
 
     try:
-        if not args.unregistered:
+        if not args.free:
             if KEYRING:
                 pwd = keyring.get_password('pyfilemail', args.username)
 
@@ -180,6 +223,7 @@ def main():
             notify=args.notify,
             confirmation=args.confirm,
             days=args.days,
+            downloads=args.downloads,
             password=args.password,
             checksum=args.checksum,
             zip_=args.compress
@@ -199,4 +243,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
