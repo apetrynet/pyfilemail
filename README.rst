@@ -76,7 +76,7 @@ Command line help
       --add-api-key ADD_API_KEY
                             Add API KEY from Filemail to local config file
       --free                Send files without a registered Filemail account
-      -nc, --no-checksum    Don't calculate checksum on added files
+      -nc, --no-checksum    Skip calculating checksum on added files
       --compress            Compress (ZIP) data before sending?
       --confirm             Email confirmation after sending the files?
       --quiet               Log only warnings to console
