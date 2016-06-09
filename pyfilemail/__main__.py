@@ -49,7 +49,7 @@ def parse_args():
                         dest='checksum',
                         action='store_false',
                         default=True,
-                        help="Don't calculate checksum on added files")
+                        help="Skip calculating checksum on added files")
 
     parser.add_argument('--compress',
                         dest='compress',
