@@ -30,6 +30,7 @@ Any feedback is more than welcome and please report bugs through `github <https:
 
 Installation
 ============
+There seems to be an issue with new packages in `pypi <https://bitbucket.org/pypa/pypi/issues/326/some-packages-not-showing-up-when>`_ that prevents ``pip search pyfilemail`` to function, but the install command below works.
 
 ..  code-block:: bash
 
