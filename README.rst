@@ -63,17 +63,19 @@ Command line help
 
 ..  code-block:: bash
 
-    usage: pyfilemail [-h] [--add-api-key ADD_API_KEY] [--free] [-nc] [--compress]
-                      [--confirm] [--quiet] [--days 3] [--downloads 0]
-                      [--message MESSAGE] [--notify] [--subject SUBJECT]
-                      [--to recipient@receiver.com [recipient@receiver.com ...]]
-                      [--password PASSWORD] [--from USERNAME] [--store-password]
-                      [--delete-password] [--payload PAYLOAD [PAYLOAD ...]]
+    usage: pyfilemail [-h] [--version] [--add-api-key ADD_API_KEY] [--free] [-nc]
+                  [--compress] [--confirm] [--quiet] [--days 3]
+                  [--downloads 0] [--message MESSAGE] [--notify]
+                  [--subject SUBJECT]
+                  [--to recipient@receiver.com [recipient@receiver.com ...]]
+                  [--password PASSWORD] [--from USERNAME] [--store-password]
+                  [--delete-password] [--payload PAYLOAD [PAYLOAD ...]]
 
     Command line Filemail transfer through Python
 
     optional arguments:
       -h, --help            show this help message and exit
+      --version             show program's version number and exit
       --add-api-key ADD_API_KEY
                             Add API KEY from Filemail to local config file
       --free                Send files without a registered Filemail account
