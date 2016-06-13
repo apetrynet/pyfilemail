@@ -18,7 +18,8 @@ from pyfilemail import (
     streamhandler,
     load_config,
     save_config,
-    get_configfile
+    get_configfile,
+    __version__
     )
 
 from users import User
@@ -32,6 +33,10 @@ def parse_args():
     prog = 'pyfilemail'
 
     parser = argparse.ArgumentParser(prog=prog, description=description)
+    parser.add_argument('--version',
+                        action='version',
+                        version='%(prog)s' + __version__)
+
     parser.add_argument('--add-api-key',
                         dest='add_api_key',
                         action='store',
@@ -149,6 +154,10 @@ https://github.com/apetrynet/pyfilemail',
                         default=None,
                         nargs='+',
                         help='File(s) and/or folder(s) to transfer')
+
+    # Display help if no arguments are provided
+    if len(sys.argv) == 1:
+        sys.exit(parser.print_help())
 
     args = parser.parse_args()
 
