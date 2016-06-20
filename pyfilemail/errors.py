@@ -56,7 +56,11 @@ def hellraiser(response):
         5006: 'AllUserLicencesesInUse'
         }
 
-    response_dict = response.json()
+    if not isinstance(response, dict):
+        response_dict = response.json()
+    else:
+        response_dict = response
+
     errorcode = response_dict['errorcode']
     errormessage = response_dict['errormessage']
 
