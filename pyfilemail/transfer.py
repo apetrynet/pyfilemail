@@ -586,7 +586,6 @@ class Transfer(object):
         :type files: ``list`` of ``dict`` with file data from filemail
         :type destination: ``str`` or ``unicode``
         :type overwrite: ``bool``
-        :rtype: ``bool``
         """
 
         if files is None:
@@ -603,8 +602,6 @@ class Transfer(object):
                 raise FMBaseError('File must be a <dict> with file data')
 
             self._download(f, destination, overwrite, callback)
-
-        return True
 
     def _download(self, fmfile, destination, overwrite, callback):
         """The actual downloader streaming content from Filemail.
@@ -623,8 +620,8 @@ class Transfer(object):
         path, filename = os.path.split(fullpath)
 
         if os.path.exists(fullpath):
-            msg = 'Skipping existing file: {fileame}'
-            self.logger.info(msg.format(filename=filename))
+            msg = 'Skipping existing file: {filename}'
+            logger.info(msg.format(filename=filename))
             return
 
         filesize = fmfile.get('filesize')
