@@ -579,8 +579,8 @@ class Transfer(object):
         """Download file or files.
 
         :param files: file or files to download
-        :param destination: destination path
-        :param overwrite: overwrite files that may exist?
+        :param destination: destination path (defaults to users home directory)
+        :param overwrite: replace existing files?
         :param callback: instance of callback function that will receive a
          percentage of file transfered
         :type files: ``list`` of ``dict`` with file data from filemail
@@ -595,27 +595,38 @@ class Transfer(object):
         elif not isinstance(files, list):
             files = [files]
 
+        if destination is None:
+            destination = os.path.expanduser('~')
+
         for f in files:
             if not isinstance(f, dict):
                 raise FMBaseError('File must be a <dict> with file data')
 
-            self._download(f, destination, callback)
+            self._download(f, destination, overwrite, callback)
 
         return True
 
-    def _download(self, fmfile, destination, callback):
+    def _download(self, fmfile, destination, overwrite, callback):
         """The actual downloader streaming content from Filemail.
 
         :param fmfile: to download
         :param destination: destination path
+        :param overwrite: replace existing files?
         :param callback: instance of callback function that will receive a
          ``float`` representing percentage of file transfered
         :type fmfile: ``dict``
         :type destination: ``str`` or ``unicode``
+        :type overwrite: ``bool``
         """
 
         fullpath = os.path.join(destination, fmfile.get('filename'))
         path, filename = os.path.split(fullpath)
+
+        if os.path.exists(fullpath):
+            msg = 'Skipping existing file: {fileame}'
+            self.logger.info(msg.format(filename=filename))
+            return
+
         filesize = fmfile.get('filesize')
         count = 0
 
