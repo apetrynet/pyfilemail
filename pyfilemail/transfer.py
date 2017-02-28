@@ -5,9 +5,12 @@ from uuid import uuid4
 from mimetypes import guess_type
 from zipfile import ZipFile
 
+from clint.textui.progress import Bar as ProgressBar
+from requests_toolbelt.multipart import encoder
+
 import users
 from urls import get_URL
-from pyfilemail import logger, login_required
+from pyfilemail import logger, login_required, in_command_line
 from errors import hellraiser, FMBaseError, FMFileError
 
 
@@ -285,14 +288,16 @@ class Transfer(object):
 
         return zip_file
 
-    def send(self, auto_complete=True):
+    def send(self, auto_complete=True, verbose=False):
         """Begin uploading file(s) and sending email(s).
         If `auto_complete` is set to ``False`` you will have to call the
         :func:`Transfer.complete` function at a later stage.
 
         :param auto_complete: Whether or not to mark transfer as complete
+        :param verbose: Display progress bar
          and send emails to recipient(s)
         :type auto_complete: ``bool``
+        :type verbose: ``bool``
         """
 
         # TODO: Figure out a way to reimplement callback function and progress.
@@ -300,22 +305,45 @@ class Transfer(object):
         url = self.transfer_info['transferurl']
 
         for index, fmfile in enumerate(self.files):
+
             msg = 'Uploading: "{filename}" ({cur}/{tot})'
-            logger.info(
+            logger.debug(
                 msg.format(
                     filename=fmfile['thefilename'],
                     cur=index + 1,
                     tot=tot)
                 )
 
-            with open(fmfile['filepath'], 'rb') as f:
-                res = self.session.post(url, params=fmfile, data=f)
+            fields = {
+                fmfile['thefilename']: (
+                    'filename',
+                    open(fmfile['filepath'], 'rb'),
+                    fmfile['content-type']
+                    )
+                }
 
-            res.text
+            def pg_callback(monitor):
+                bar.show(monitor.bytes_read / 1024)
+
+            m_encoder = encoder.MultipartEncoder(fields=fields)
+            monitor = encoder.MultipartEncoderMonitor(m_encoder, pg_callback)
+            label = fmfile['thefilename'] + ': '
+
+            if in_command_line:
+                bar = ProgressBar(label=label,
+                                  expected_size=fmfile['totalsize'] / 1024)
+
+            headers = {'Content-Type': m_encoder.content_type}
+
+            res = self.session.post(url,
+                                    params=fmfile,
+                                    data=monitor,
+                                    headers=headers)
 
             if res.status_code != 200:
                 hellraiser(res)
 
+        #logger.info('\r')
         if auto_complete:
             return self.complete()
 
