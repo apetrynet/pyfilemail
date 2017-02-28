@@ -16,7 +16,7 @@ class User(object):
      :func:`getpass.getpass` for instance
 
     :param username: your email/username
-    :param password: filename password if registered username is used
+    :param password: filemail password if registered username is used
     :type username: str
     :type password: str
     """
