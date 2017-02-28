@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 __title__ = 'pyfilemail'
-__version__ = '0.3.4'
+__version__ = '0.4.0'
 __author__ = 'Daniel Flehner Heen'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2016 Daniel Flehner Heen'
@@ -50,6 +50,10 @@ streamhandler.setLevel(logging.INFO)
 # Add handler
 logger.addHandler(filehandler)
 logger.addHandler(streamhandler)
+
+
+# Holds whether or not we are running as commandline tool
+COMMANDLINE = False
 
 
 # Decorator to make sure user is logged in

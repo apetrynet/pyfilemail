@@ -5,8 +5,10 @@ import pyfilemail
 
 dependencies = [
     'requests',
+    'requests_toolbelt',
     'appdirs',
-    'keyring'
+    'keyring',
+    'clint'
     ]
 
 with open('README.rst') as f:
