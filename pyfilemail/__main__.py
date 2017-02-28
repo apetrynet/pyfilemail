@@ -251,9 +251,3 @@ def main():
     except KeyboardInterrupt:
         msg = '\nAborted by user!'
         logger.warning(msg)
-
-#if __name__ == '__main__':
-    #print 'hello'
-    #COMMANDLINE = True
-    #main()
-#
