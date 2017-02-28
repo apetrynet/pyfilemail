@@ -240,14 +240,14 @@ def main():
 
         transfer.add_files(args.payload)
 
-        res = transfer.send()
+        res = transfer.send(verbose=True)
 
         if res.status_code == 200:
-            msg = 'Transfer complete!'
+            msg = '\nTransfer complete!'
             logger.info(msg)
 
     except KeyboardInterrupt:
-        msg = 'Aborted by user!'
+        msg = '\nAborted by user!'
         logger.warning(msg)
 
 if __name__ == '__main__':
