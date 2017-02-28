@@ -52,6 +52,12 @@ logger.addHandler(filehandler)
 logger.addHandler(streamhandler)
 
 
+# Function to determine if in command line mode or API
+@property
+def in_command_line():
+    return __name__ == '__main__'
+
+
 # Decorator to make sure user is logged in
 def login_required(f):
     """Decorator function to check if user is loged in.
