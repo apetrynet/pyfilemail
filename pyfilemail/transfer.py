@@ -9,9 +9,28 @@ from clint.textui.progress import Bar as ProgressBar
 from requests_toolbelt.multipart import encoder
 
 import users
+import pyfilemail as pm
 from urls import get_URL
-from pyfilemail import logger, login_required, in_command_line
+from functools import wraps
+from pyfilemail import logger, login_required
 from errors import hellraiser, FMBaseError, FMFileError
+
+
+# Decorator to make sure we don't transfer complete packages twice
+def not_completed(f):
+    """Decorator function to check if user is loged in.
+
+    :raises: :class:`FMBaseError` if not logged in
+    """
+
+    @wraps(f)
+    def check_if_complete(cls, *args, **kwargs):
+        if cls.is_complete:
+            raise FMBaseError('Transfer already completed.')
+
+        return f(cls, *args, **kwargs)
+
+    return check_if_complete
 
 
 class Transfer(object):
@@ -288,16 +307,18 @@ class Transfer(object):
 
         return zip_file
 
-    def send(self, auto_complete=True, verbose=False):
+    @not_completed
+    def send(self, auto_complete=True, callback=None):
         """Begin uploading file(s) and sending email(s).
         If `auto_complete` is set to ``False`` you will have to call the
         :func:`Transfer.complete` function at a later stage.
 
         :param auto_complete: Whether or not to mark transfer as complete
-        :param verbose: Display progress bar
          and send emails to recipient(s)
+        :param callback: Callback function which will receive total size and
+         bytes read as argumnets
         :type auto_complete: ``bool``
-        :type verbose: ``bool``
+        :type callback: ``func``
         """
 
         # TODO: Figure out a way to reimplement callback function and progress.
@@ -323,15 +344,19 @@ class Transfer(object):
                 }
 
             def pg_callback(monitor):
-                bar.show(monitor.bytes_read / 1024)
+                if pm.COMMANDLINE:
+                    bar.show(monitor.bytes_read)
+
+                else:
+                    callback(fmfile['totalsize'], monitor.bytes_read)
 
             m_encoder = encoder.MultipartEncoder(fields=fields)
             monitor = encoder.MultipartEncoderMonitor(m_encoder, pg_callback)
             label = fmfile['thefilename'] + ': '
 
-            if in_command_line:
+            if pm.COMMANDLINE:
                 bar = ProgressBar(label=label,
-                                  expected_size=fmfile['totalsize'] / 1024)
+                                  expected_size=fmfile['totalsize'])
 
             headers = {'Content-Type': m_encoder.content_type}
 
