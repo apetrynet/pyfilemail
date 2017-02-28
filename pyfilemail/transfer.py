@@ -315,13 +315,12 @@ class Transfer(object):
 
         :param auto_complete: Whether or not to mark transfer as complete
          and send emails to recipient(s)
-        :param callback: Callback function which will receive total size and
-         bytes read as argumnets
+        :param callback: Callback function which will receive total file size
+         and bytes read as arguments
         :type auto_complete: ``bool``
         :type callback: ``func``
         """
 
-        # TODO: Figure out a way to reimplement callback function and progress.
         tot = len(self.files)
         url = self.transfer_info['transferurl']
 
@@ -634,11 +633,12 @@ class Transfer(object):
         :param files: file or files to download
         :param destination: destination path (defaults to users home directory)
         :param overwrite: replace existing files?
-        :param callback: instance of callback function that will receive a
-         percentage of file transfered
+        :param callback: callback function that will receive total file size
+         and written bytes as arguments
         :type files: ``list`` of ``dict`` with file data from filemail
         :type destination: ``str`` or ``unicode``
         :type overwrite: ``bool``
+        :type callback: ``func``
         """
 
         if files is None:
