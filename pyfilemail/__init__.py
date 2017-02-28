@@ -52,10 +52,8 @@ logger.addHandler(filehandler)
 logger.addHandler(streamhandler)
 
 
-# Function to determine if in command line mode or API
-@property
-def in_command_line():
-    return __name__ == '__main__'
+# Holds whether or not we are running as commandline tool
+COMMANDLINE = False
 
 
 # Decorator to make sure user is logged in
