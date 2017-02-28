@@ -1,7 +1,3 @@
-NOTE!
-=====
-This is still work in progress and parts of the API might change as I test it further.
-
 Welcome to pyfilemail's documentation!
 ======================================
 
@@ -30,11 +26,15 @@ Any feedback is more than welcome and please report bugs through `github <https:
 
 Installation
 ============
-There seems to be an issue with new packages in `pypi <https://bitbucket.org/pypa/pypi/issues/326/some-packages-not-showing-up-when>`_ that prevents ``pip search pyfilemail`` to function, but the install command below works.
-
 ..  code-block:: bash
 
     pip install pyfilemail
+
+Disclaimer
+==========
+I use this software myself and have not yet experienced broken files, but I take no responsibility for the files sent or received using pyfilemail whether it comes to content or state of files passing through.
+Pyfilemail is still work in progress and parts of the API might change as I develop and test it further.
+
 
 Command line example
 ====================
