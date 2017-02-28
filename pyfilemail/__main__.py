@@ -13,6 +13,7 @@ k = keyring.get_keyring()
 if isinstance(k, keyring.backends.fail.Keyring):
     KEYRING = False
 
+import pyfilemail as pm
 from pyfilemail import (
     logger,
     streamhandler,
@@ -208,6 +209,7 @@ https://github.com/apetrynet/pyfilemail',
 
 
 def main():
+    pm.COMMANDLINE = True
     args = parse_args()
 
     pwd = None
@@ -240,7 +242,7 @@ def main():
 
         transfer.add_files(args.payload)
 
-        res = transfer.send(verbose=True)
+        res = transfer.send()
 
         if res.status_code == 200:
             msg = '\nTransfer complete!'
@@ -250,5 +252,8 @@ def main():
         msg = '\nAborted by user!'
         logger.warning(msg)
 
-if __name__ == '__main__':
-    main()
+#if __name__ == '__main__':
+    #print 'hello'
+    #COMMANDLINE = True
+    #main()
+#
