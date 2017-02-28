@@ -347,7 +347,7 @@ class Transfer(object):
                 if pm.COMMANDLINE:
                     bar.show(monitor.bytes_read)
 
-                else:
+                elif callback is not None:
                     callback(fmfile['totalsize'], monitor.bytes_read)
 
             m_encoder = encoder.MultipartEncoder(fields=fields)
@@ -662,11 +662,12 @@ class Transfer(object):
         :param fmfile: to download
         :param destination: destination path
         :param overwrite: replace existing files?
-        :param callback: instance of callback function that will receive a
-         ``float`` representing percentage of file transfered
+        :param callback: callback function that will receive total file size
+         and written bytes as arguments
         :type fmfile: ``dict``
         :type destination: ``str`` or ``unicode``
         :type overwrite: ``bool``
+        :type callback: ``func``
         """
 
         fullpath = os.path.join(destination, fmfile.get('filename'))
@@ -678,7 +679,6 @@ class Transfer(object):
             return
 
         filesize = fmfile.get('filesize')
-        count = 0
 
         if not os.path.exists(path):
             os.makedirs(path)
@@ -686,16 +686,28 @@ class Transfer(object):
         url = fmfile.get('downloadurl')
         stream = self.session.get(url, stream=True)
 
+        def pg_callback(bytes_written):
+            if pm.COMMANDLINE:
+                bar.show(bytes_written)
+
+            elif callback is not None:
+                callback(filesize, bytes_written)
+
+        if pm.COMMANDLINE:
+            label = fmfile['filename'] + ': '
+            bar = ProgressBar(label=label, expected_size=filesize)
+
+        bytes_written = 0
         with open(fullpath, 'wb') as f:
-            for chunk in stream.iter_content(chunk_size=1024):
+            for chunk in stream.iter_content(chunk_size=1024 * 1024):
                 if not chunk:
                     break
 
                 f.write(chunk)
+                bytes_written += len(chunk)
 
-                if callback is not None:
-                    count += len(chunk)
-                    callback(float(count) / float(filesize) * 100)
+                # Callback
+                pg_callback(bytes_written)
 
     @login_required
     def compress(self):
