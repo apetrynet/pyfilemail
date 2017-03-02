@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 __title__ = 'pyfilemail'
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 __author__ = 'Daniel Flehner Heen'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2016 Daniel Flehner Heen'
