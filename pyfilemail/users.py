@@ -12,9 +12,9 @@ from errors import hellraiser, FMBaseError
 class User(object):
     """This is the entry point to filemail.
      If you use a registered username you'll need to provide
-     a password to login. This should get provided and passed without
-     storing/displaying it in plain text. Use python's built in
-     :func:`getpass.getpass` for instance
+     a password to login. If no password is passed during init a search for
+     password is done in $HOME/.netrc
+     You may also login at a later time with the :func:`User.login` function.
 
     :param username: your email/username
     :param password: filemail password if registered username is used
