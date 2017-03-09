@@ -58,6 +58,17 @@ You can add the API KEY to the local config file with the ``--add-api-key`` argu
 
     pyfilemail --add-api-key YOUR-API-KEY-FROM-FILEMAIL
 
+netrc
+======
+You may use a .netrc file to store login information. Make sure you restrict access to only allow your own user to read it.
+
+..  code-block:: bash
+
+    #$HOME/.netrc example:
+    machine yourfilemailuser@email.com
+            login yourfilemailuser@email.com
+            password topsecretpassword
+
 Command line help
 =================
 
