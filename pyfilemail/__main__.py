@@ -4,14 +4,24 @@ import sys
 import argparse
 import getpass
 import logging
+from netrc import netrc, NetrcParseError
 
 import keyring
 from keyring.errors import PasswordDeleteError
 
+# Check for keyring
 KEYRING = True
 k = keyring.get_keyring()
 if isinstance(k, keyring.backends.fail.Keyring):
     KEYRING = False
+
+# Check for .netrc file
+try:
+    _netrc = netrc()
+    NETRC = True
+
+except (IOError, NetrcParseError):
+    NETRC = False
 
 import pyfilemail as pm
 from pyfilemail import (
@@ -218,6 +228,14 @@ def main():
         if not args.free:
             if KEYRING:
                 pwd = keyring.get_password('pyfilemail', args.username)
+
+            elif NETRC:
+                machine = _netrc.authenticators(args.username)
+                if machine:
+                    pwd = machine[2]
+
+                else:
+                    pwd = None
 
             if pwd is None:
                 pwd = getpass.getpass('Please enter Filemail password: ')
