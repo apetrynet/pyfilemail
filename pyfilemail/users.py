@@ -2,6 +2,7 @@ from calendar import timegm
 from datetime import datetime, timedelta
 from requests import Session
 
+import pyfilemail as pm
 from pyfilemail import logger, login_required, load_config, get_configfile
 from urls import get_URL
 from transfer import Transfer
@@ -27,6 +28,7 @@ class User(object):
         self.transfers = []
 
         self.session = Session()
+        self.session.cookies['source'] = 'Desktop'
         self.config = load_config()
 
         apikey = self.config.get('apikey')
@@ -35,12 +37,18 @@ class User(object):
             msg = 'No API KEY set in {conf}.\n{apikey}\n'
             logger.warning(msg.format(conf=get_configfile(), apikey=apikey))
 
+        if password is None and pm.NETRC:
+            machine = pm._netrc.authenticators(username)
+            if machine:
+                password = machine[2]
+
+            else:
+                password = None
+
         if password is not None:
             self.login(password)
-            self.session.cookies['source'] = 'Desktop'
 
         else:
-            self.session.cookies['source'] = 'web'
             self.session.cookies['logintoken'] = None
 
     @property
