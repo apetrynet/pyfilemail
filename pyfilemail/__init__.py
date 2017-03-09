@@ -11,6 +11,15 @@ import os
 import logging
 import json
 from functools import wraps
+from netrc import netrc, NetrcParseError
+
+# Check for .netrc file
+try:
+    _netrc = netrc()
+    NETRC = True
+
+except (IOError, NetrcParseError):
+    NETRC = False
 
 import appdirs
 
