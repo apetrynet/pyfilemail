@@ -11,15 +11,23 @@ from errors import hellraiser, FMBaseError
 
 class User(object):
     """This is the entry point to filemail.
-     If you use a registered username you'll need to provide
-     a password to login. If no password is passed during init a search for
-     password is done in $HOME/.netrc
-     You may also login at a later time with the :func:`User.login` function.
+    If you use a registered username you'll need to provide
+    a password to login. If no password is passed during init a search for
+    password is done in $HOME/.netrc
+    You may also login at a later time with the :func:`User.login` function.
 
     :param username: your email/username
     :param password: filemail password if registered username is used
     :type username: str
     :type password: str
+
+    ::
+
+        #$HOME/.netrc example:
+        machine yourfilemailuser@email.com
+                login yourfilemailuser@email.com
+                password topsecretpassword
+
     """
 
     def __init__(self, username, password=None):
