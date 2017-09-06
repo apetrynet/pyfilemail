@@ -1,3 +1,6 @@
+import requests
+
+
 class FileMailBaseError(Exception):
     def __str__(self):
         return self.message
@@ -56,8 +59,13 @@ def hellraiser(response):
         5006: 'AllUserLicencesesInUse'
         }
 
-    if not isinstance(response, dict):
-        response_dict = response.json()
+    if not isinstance(response, requests.Response):
+        if hasattr(response, 'json'):
+            response_dict = response.json()
+
+        else:
+            raise Exception(response.text())
+
     else:
         response_dict = response
 
