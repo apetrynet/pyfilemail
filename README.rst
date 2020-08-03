@@ -1,3 +1,6 @@
+Unfortunately this project is discontinued until further notice. 
+Please consider using Filemail's `CLI <https://www.filemail.com/apidoc/FilemailLibs.aspx>`_ for your scripting needs.
+
 Welcome to pyfilemail's documentation!
 ======================================
 
